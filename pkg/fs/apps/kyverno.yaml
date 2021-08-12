@@ -7,10 +7,8 @@ metadata:
   name: "kyverno-{{.Cluster.Name}}"
   namespace: "{{.Cluster.Namespace}}"
 spec:
-  {{if ne .Cluster.Namespace "undistro-system"}}
-  {{if ne .Cluster.Name "management"}}
+  {{if and (ne .Cluster.Namespace "undistro-system") (ne .Cluster.Name "management")}}
   clusterName: "{{.Cluster.Namespace}}/{{.Cluster.Name}}"
-  {{end}}
   {{end}}
   releaseNme: kyverno
   targetNamespace: kyverno

@@ -158,7 +158,7 @@ const ClusterWizard: FC<TypeModal> = ({ handleClose }) => {
       apiVersion: 'app.undistro.io/v1alpha1',
       kind: 'DefaultPolicies',
       metadata: {
-        name: 'defaultpolicies-undistro',
+        name: `defaultpolicies-${clusterName}`,
         namespace: namespace
       },
       spec: {
