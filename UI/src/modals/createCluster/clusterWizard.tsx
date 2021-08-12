@@ -174,7 +174,9 @@ const ClusterWizard: FC<TypeModal> = ({ handleClose }) => {
       Api.Cluster.postPolicies(dataPolicies, namespace)
     }, 1000)
 
-    streamUpdates()
+    setTimeout(() => {
+      streamUpdates()
+    }, 1000)
   }
 
   const getSecrets = (secretRef: string) => {
