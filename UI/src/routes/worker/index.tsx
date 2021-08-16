@@ -2,9 +2,11 @@
 import { WorkerDetails } from '@components/details'
 import { useEffect, useState } from 'react'
 import Api from 'util/api'
+import { useHistory } from 'react-router'
 
 export default function WorkerPage() {
   const [groups, setGroups] = useState<any>()
+  const history = useHistory()
 
   const getData = () => {
     Api.Cluster.get('undistro-system', 'wizard')
@@ -31,7 +33,7 @@ export default function WorkerPage() {
     <div className="home-page-route">
       <WorkerDetails
         groups={groups}
-        onCancel={() => alert('#TODO: Voltar para página de listagem!')}
+        onCancel={() => history.push('/')}
         onSave={data => {
           console.log(data)
         }}

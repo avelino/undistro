@@ -3,6 +3,7 @@ import { ClusterDetails } from '@components/details'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Api from 'util/api'
+import { useHistory } from 'react-router'
 
 export default function ClusterRoute() {
   const [data, setData] = useState<any>()
@@ -12,6 +13,7 @@ export default function ClusterRoute() {
   const [provider, setProvider] = useState<string>('')
   const [session, setSession] = useState<string>('')
   const params = useParams<any>()
+  const history = useHistory()
 
   const getData = () => {
     Api.Cluster.get(params.namespace, params.clusterName)
@@ -71,7 +73,7 @@ export default function ClusterRoute() {
           bastionEnabled: data.spec.bastion.enabled,
           k8sNetworkMultiZone: data.spec.network.multiZone
         }}
-        onCancel={() => alert('#TODO: Voltar para página de listagem!')}
+        onCancel={() => history.push('/')}
         onSave={data => {
           console.log(data)
         }}

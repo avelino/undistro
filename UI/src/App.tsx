@@ -87,8 +87,8 @@ export default function App() {
         <Switch>
           <Route exact path="/" component={HomePageRoute} />
           <Route exact path="/nodepools" component={NodepoolsPage} />
-          <Route exact path="/controlPlane/:id" component={ControlPlanePage} />
-          <Route exact path="/worker/:id" component={WorkerPage} />
+          <Route exact path="/controlPlane/:namespace/:clusterName" component={ControlPlanePage} />
+          <Route exact path="/worker/:namespace/:clusterName" component={WorkerPage} />
           <Route exact path="/cluster/:namespace/:clusterName" component={ClusterRoute} />
         </Switch>
         <Modals />

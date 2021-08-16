@@ -4,6 +4,7 @@ import './index.scss'
 import { useClickOutside } from 'hooks/useClickOutside'
 import { useDisclosure } from 'hooks/useDisclosure'
 import { DeleteNodepoolAlert } from '@components/nodepoolActionAlert'
+import { useHistory } from 'react-router'
 
 const ASC = 'asc'
 const DES = 'des'
@@ -126,6 +127,7 @@ const Row = props => {
   const [keys, setKeys] = useState([])
   const [show, setShow] = useState(false)
   const menuRef = useRef(null)
+  const history = useHistory()
 
   useClickOutside(menuRef, () => {
     setShow(false)
@@ -146,6 +148,14 @@ const Row = props => {
     Api.Nodepool.delete(namespace, props.data.name).then(_ => {
       console.log(`Deleted cluster ${props.data.name}.`)
     })
+  }
+
+  const handleRedirect = () => {
+    let nodepool = ''
+    if (props.data.type === "Control Plane") nodepool = 'controlPlane'
+    else nodepool = 'worker'
+
+    history.push(`/${nodepool}/undistro-system/${props.data.name}`)
   }
 
   const isControlPlane = props.data.provider === 'aws'
@@ -177,7 +187,7 @@ const Row = props => {
               <AddIcon /> <p>Create Nodepool</p>
             </li>
             <li>
-              <i className="icon-settings" /> <p>Nodepool Settings</p>
+              <i onClick={() => handleRedirect()} className="icon-settings" /> <p>Nodepool Settings</p>
             </li>
             <li
               className={isControlPlane ? 'disabled-option' : ''}
