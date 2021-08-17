@@ -30,7 +30,7 @@ function exit_and_inform {
 
 function print_long_help {
 	cat <<- EOF
-		Usage: $(basename $0) <OPTION>
+		Usage: $(basename $0) <OPTIONS>
 		The options are:
 	EOF
 	flags=("h" "b <registry_address>:<docker_tag>" "k" "m <minikube_ip>")

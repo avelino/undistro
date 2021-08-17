@@ -23,7 +23,7 @@ function exit_and_inform {
 			echo "Error: No git project." 1>&2
 			;;
 		1)
-			echo "Error: No host provided." 1>&2
+			echo "Error: No address provided." 1>&2
 			;;
 		2)
 			echo "Error: No tag provided." 1>&2
