@@ -142,6 +142,24 @@
         position: relative;
         scroll-margin-top: 86px;
 
+        p {
+          position: absolute;
+          left: 30%;
+          font-size: 14px;
+          padding: 0 4px;
+          top: 5px;
+          border-radius: 2px;
+        }
+
+        .version {
+          background-color: $primary-color-light;
+        }
+
+        .deprecated {
+          background-color: #fa1d38;
+          color: white;
+        }
+
         &::before {
           content: '';
           width: 6px;
