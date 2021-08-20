@@ -102,11 +102,7 @@ undistro get clusters yourclustername -n yourclusternamespace
 Once you have finished the installation retrieve the kubeconfig to access the created cluster:
 
 ```bash
-<<<<<<< HEAD
-undistro get kubeconfig yourclustername -n yourclusternamespace
-=======
 undistro get kubeconfig yourclustername -n yourclusternamespace --admin
->>>>>>> 6fb632a4106ecf8475fdf32092f57c4d7ebacda9
 ```
 
 - _For more information about UnDistro, please refer to the next topics of this document._
@@ -116,9 +112,5 @@ undistro get kubeconfig yourclustername -n yourclusternamespace --admin
 To delete all resources created by undistro, run the command line below
 
 ```bash
-<<<<<<< HEAD
-undistro delete -f yourclustername.yaml
-=======
 undistro delete -f yourclustername.yaml && undistro destroy kind
->>>>>>> 6fb632a4106ecf8475fdf32092f57c4d7ebacda9
 ```
