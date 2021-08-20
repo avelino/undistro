@@ -1,5 +1,5 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: Cluster
 metadata:
   name: "{{.Cluster.Name}}"
@@ -31,18 +31,18 @@ spec:
   {{end}}
   {{end}}
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
     kind: AWSCluster
     name: "{{.Cluster.Name}}"
     namespace: "{{.Cluster.Namespace}}"
   controlPlaneRef:
     kind: KubeadmControlPlane
-    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
     name: "{{.Cluster.Name}}"
     namespace: "{{.Cluster.Namespace}}"
 
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AWSCluster
 metadata:
   name: "{{.Cluster.Name}}"
@@ -82,7 +82,7 @@ spec:
   {{end}}
   {{end}}
   {{if .Cluster.Spec.Network}}
-  networkSpec:
+  network:
     {{if .Cluster.Spec.Network.VPC}}
     vpc:
       {{if .Cluster.Spec.Network.VPC.ID}}
@@ -116,17 +116,18 @@ spec:
   {{end}}
 ---
 kind: KubeadmControlPlane
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
 metadata:
   name: "{{.Cluster.Name}}"
   namespace: "{{.Cluster.Namespace}}"
 spec:
   replicas: {{ .Cluster.Spec.ControlPlane.Replicas}}
-  infrastructureTemplate:
-    kind: AWSMachineTemplate
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
-    name: "{{.Cluster.Name}}-cp-{{.Cluster.Status.LastUsedUID}}"
-    namespace: "{{.Cluster.Namespace}}"
+  machineTemplate:
+    infrastructureRef:
+      kind: AWSMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+      name: "{{.Cluster.Name}}-cp-{{.Cluster.Status.LastUsedUID}}"
+      namespace: "{{.Cluster.Namespace}}"
   kubeadmConfigSpec:
     useExperimentalRetryJoin: true
     initConfiguration:
@@ -175,7 +176,7 @@ spec:
   version: "{{.Cluster.Spec.KubernetesVersion}}"
 ---
 kind: AWSMachineTemplate
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 metadata:
   name: "{{.Cluster.Name}}-cp-{{.Cluster.Status.LastUsedUID}}"
   namespace: "{{.Cluster.Namespace}}"
@@ -198,7 +199,7 @@ spec:
         id: {{.Cluster.Spec.ControlPlane.Subnet}}
       {{end}}
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: MachineHealthCheck
 metadata:
   name: "{{.Cluster.Name}}"
@@ -226,7 +227,7 @@ spec:
 {{$subnets := .Cluster.Spec.Network.Subnets}}
 {{range $index, $element := .Cluster.Spec.Workers}}
 ---
-apiVersion: exp.cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: MachinePool
 metadata:
   name: "{{$name}}-mp-{{$index}}"
@@ -238,19 +239,19 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
           kind: KubeadmConfig
           name: "{{$name}}-mp-{{$uid}}-{{$index}}"
           namespace: "{{$namespace}}"
       clusterName: {{$name}}
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: AWSMachinePool
         name: "{{$name}}-mp-{{$index}}"
         namespace: "{{$namespace}}"
       version: "{{$k8s}}"
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AWSMachinePool
 metadata:
   name: "{{$name}}-mp-{{$index}}"
@@ -292,7 +293,7 @@ spec:
     - {{$element.Subnet}}
   {{end}}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
 kind: KubeadmConfig
 metadata:
   name: "{{$name}}-mp-{{$uid}}-{{$index}}"

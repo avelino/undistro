@@ -71,7 +71,7 @@ var _ = Describe("Create EC2 cluster 1.20", func() {
 		fmt.Println("Get Kubeconfig")
 		cmd = exec.NewCommand(
 			exec.WithCommand("undistro"),
-			exec.WithArgs("get", "kubeconfig", "ec2-20-e2e", "-n", "e2e"),
+			exec.WithArgs("get", "kubeconfig", "ec2-20-e2e", "-n", "e2e", "--admin"),
 		)
 		out, _, err = cmd.Run(context.Background())
 		Expect(err).ToNot(HaveOccurred())

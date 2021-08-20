@@ -32,6 +32,7 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/record"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/getupio-undistro/undistro/pkg/undistro/apiserver"
+	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/getupio-undistro/undistro/pkg/version"
 	// +kubebuilder:scaffold:imports
 )
@@ -105,6 +106,15 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Provider")
+		os.Exit(1)
+	}
+	if err = (&appcontroller.IdentityReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Identity"),
+		Scheme:   mgr.GetScheme(),
+		Audience: util.RandomString(24),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Identity")
 		os.Exit(1)
 	}
 	if err = (&appv1alpha1.Cluster{}).SetupWebhookWithManager(mgr); err != nil {

@@ -52,6 +52,14 @@ brew install getupio-undistro/tap/undistro
 
 The configuration changes according to provider we want to install. Know more in [configuration page](./docs#configuration)
 
+##  Setup Kind
+
+If you decide to use a Kind cluster, you can use UnDistro to setup it for you.
+
+```bash
+undistro setup kind
+```
+
 ## Initialize the management cluster
 
 Now that we have got UnDistro CLI installed and all the prerequisites are in place, let's transform the Kubernetes cluster

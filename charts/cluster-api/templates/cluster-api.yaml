@@ -1,154 +1,11 @@
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: undistro-system/capi-serving-cert
-  creationTimestamp: null
   labels:
     cluster.x-k8s.io/provider: cluster-api
-  name: capi-mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-cluster-x-k8s-io-v1alpha3-cluster
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.cluster.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - clusters
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-cluster-x-k8s-io-v1alpha3-machine
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.machine.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - machines
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-cluster-x-k8s-io-v1alpha3-machinedeployment
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.machinedeployment.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - machinedeployments
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-cluster-x-k8s-io-v1alpha3-machinehealthcheck
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.machinehealthcheck.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - machinehealthchecks
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-cluster-x-k8s-io-v1alpha3-machineset
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.machineset.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - machinesets
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-exp-cluster-x-k8s-io-v1alpha3-machinepool
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.exp.machinepool.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - exp.cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - machinepools
-  sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: capi-webhook-service
-      namespace: undistro-system
-      path: /mutate-addons-cluster-x-k8s-io-v1alpha3-clusterresourceset
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: default.clusterresourceset.addons.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - addons.cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - clusterresourcesets
-  sideEffects: None
+  name: capi-manager
+  namespace: undistro-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -184,6 +41,18 @@ rules:
   - events
   verbs:
   - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 ---
 aggregationRule:
   clusterRoleSelectors:
@@ -200,7 +69,6 @@ rules: []
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   labels:
     cluster.x-k8s.io/aggregate-to-manager: "true"
     cluster.x-k8s.io/provider: cluster-api
@@ -221,6 +89,7 @@ rules:
 - apiGroups:
   - addons.cluster.x-k8s.io
   resources:
+  - clusterresourcesets/finalizers
   - clusterresourcesets/status
   verbs:
   - get
@@ -250,7 +119,6 @@ rules:
   - watch
 - apiGroups:
   - bootstrap.cluster.x-k8s.io
-  - exp.infrastructure.cluster.x-k8s.io
   - infrastructure.cluster.x-k8s.io
   resources:
   - '*'
@@ -263,10 +131,20 @@ rules:
   - update
   - watch
 - apiGroups:
-  - bootstrap.cluster.x-k8s.io
-  - infrastructure.cluster.x-k8s.io
+  - cluster.x-k8s.io
   resources:
-  - '*'
+  - clusterclasses
+  - machinedeployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - clusters/finalizers
+  - clusters/status
   verbs:
   - create
   - delete
@@ -292,6 +170,7 @@ rules:
   - cluster.x-k8s.io
   resources:
   - machinedeployments
+  - machinedeployments/finalizers
   - machinedeployments/status
   verbs:
   - create
@@ -305,6 +184,7 @@ rules:
   - cluster.x-k8s.io
   resources:
   - machinehealthchecks
+  - machinehealthchecks/finalizers
   - machinehealthchecks/status
   verbs:
   - get
@@ -315,7 +195,22 @@ rules:
 - apiGroups:
   - cluster.x-k8s.io
   resources:
+  - machinepools
+  - machinepools/finalizers
+  - machinepools/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
   - machines
+  - machines/finalizers
   - machines/status
   verbs:
   - create
@@ -328,7 +223,18 @@ rules:
 - apiGroups:
   - cluster.x-k8s.io
   resources:
+  - machines
+  - machines/status
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
   - machinesets
+  - machinesets/finalizers
   - machinesets/status
   verbs:
   - create
@@ -379,51 +285,6 @@ rules:
   - list
   - patch
   - watch
-- apiGroups:
-  - exp.cluster.x-k8s.io
-  resources:
-  - '*'
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - exp.cluster.x-k8s.io
-  resources:
-  - machinepools
-  - machinepools/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: cluster-api
-  name: capi-proxy-role
-rules:
-- apiGroups:
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups:
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -438,13 +299,12 @@ roleRef:
   name: capi-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capi-manager
   namespace: undistro-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     cluster.x-k8s.io/provider: cluster-api
   name: capi-manager-rolebinding
@@ -454,40 +314,8 @@ roleRef:
   name: capi-aggregated-manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capi-manager
   namespace: undistro-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: cluster-api
-  name: capi-proxy-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: capi-proxy-role
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: undistro-system
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: cluster-api
-    control-plane: capi-controller-manager
-  name: capi-controller-manager-metrics-service
-  namespace: undistro-system
-spec:
-  ports:
-  - name: https
-    port: 8443
-    targetPort: https
-  selector:
-    cluster.x-k8s.io/provider: cluster-api
-    control-plane: capi-controller-manager
 ---
 apiVersion: v1
 kind: Service
@@ -508,7 +336,7 @@ kind: Deployment
 metadata:
   labels:
     cluster.x-k8s.io/provider: cluster-api
-    control-plane: capi-controller-manager
+    control-plane: controller-manager
   name: capi-controller-manager
   namespace: undistro-system
 spec:
@@ -516,88 +344,21 @@ spec:
   selector:
     matchLabels:
       cluster.x-k8s.io/provider: cluster-api
-      control-plane: capi-controller-manager
+      control-plane: controller-manager
   template:
     metadata:
       labels:
         cluster.x-k8s.io/provider: cluster-api
-        control-plane: capi-controller-manager
+        control-plane: controller-manager
     spec:
       containers:
       - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-      - args:
-        - --metrics-addr=127.0.0.1:8080
-        - --enable-leader-election
-        - --feature-gates=MachinePool=true,ClusterResourceSet=true
+        - --leader-elect
+        - --metrics-bind-addr=localhost:8080
+        - --feature-gates=MachinePool=true,ClusterResourceSet=true,ClusterTopology=false
         command:
         - /manager
-        image: registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api/cluster-api-controller:v0.3.22
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: healthz
-        name: manager
-        ports:
-        - containerPort: 9440
-          name: healthz
-          protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: healthz
-      terminationGracePeriodSeconds: 10
-      tolerations:
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: cluster-api
-    control-plane: capi-controller-manager
-  name: capi-controller-manager-webhook
-  namespace: undistro-system
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      cluster.x-k8s.io/provider: cluster-api
-      control-plane: capi-controller-manager
-  template:
-    metadata:
-      labels:
-        cluster.x-k8s.io/provider: cluster-api
-        control-plane: capi-controller-manager
-    spec:
-      containers:
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-      - args:
-        - --metrics-addr=127.0.0.1:8080
-        - --webhook-port=9443
-        - --feature-gates=MachinePool=true,ClusterResourceSet=true
-        command:
-        - /manager
-        image:  registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api/cluster-api-controller:v0.3.22
+        image: registry.undistro.io/k8s/cluster-api/cluster-api-controller:v0.4.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -619,6 +380,7 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+      serviceAccountName: capi-manager
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -626,10 +388,9 @@ spec:
       volumes:
       - name: cert
         secret:
-          defaultMode: 420
           secretName: capi-webhook-service-cert
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
@@ -645,7 +406,7 @@ spec:
     name: capi-selfsigned-issuer
   secretName: capi-webhook-service-cert
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   labels:
@@ -655,22 +416,209 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: undistro-system/capi-serving-cert
+  labels:
+    cluster.x-k8s.io/provider: cluster-api
+  name: capi-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-cluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.cluster.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-clusterclass
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.clusterclass.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusterclasses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-machine
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.machine.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-machinedeployment
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.machinedeployment.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machinedeployments
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-machinehealthcheck
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.machinehealthcheck.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machinehealthchecks
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-machineset
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.machineset.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machinesets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-cluster-x-k8s-io-v1alpha4-machinepool
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.machinepool.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /mutate-addons-cluster-x-k8s-io-v1alpha4-clusterresourceset
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.clusterresourceset.addons.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - addons.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusterresourcesets
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: undistro-system/capi-serving-cert
-  creationTimestamp: null
   labels:
     cluster.x-k8s.io/provider: cluster-api
   name: capi-validating-webhook-configuration
 webhooks:
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-cluster-x-k8s-io-v1alpha3-cluster
+      path: /validate-cluster-x-k8s-io-v1alpha4-cluster
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.cluster.cluster.x-k8s.io
@@ -678,19 +626,43 @@ webhooks:
   - apiGroups:
     - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - clusters
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-cluster-x-k8s-io-v1alpha3-machine
+      path: /validate-cluster-x-k8s-io-v1alpha4-clusterclass
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.clusterclass.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusterclasses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: capi-webhook-service
+      namespace: undistro-system
+      path: /validate-cluster-x-k8s-io-v1alpha4-machine
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.machine.cluster.x-k8s.io
@@ -698,19 +670,21 @@ webhooks:
   - apiGroups:
     - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - machines
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-cluster-x-k8s-io-v1alpha3-machinedeployment
+      path: /validate-cluster-x-k8s-io-v1alpha4-machinedeployment
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.machinedeployment.cluster.x-k8s.io
@@ -718,19 +692,21 @@ webhooks:
   - apiGroups:
     - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - machinedeployments
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-cluster-x-k8s-io-v1alpha3-machinehealthcheck
+      path: /validate-cluster-x-k8s-io-v1alpha4-machinehealthcheck
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.machinehealthcheck.cluster.x-k8s.io
@@ -738,19 +714,21 @@ webhooks:
   - apiGroups:
     - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - machinehealthchecks
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-cluster-x-k8s-io-v1alpha3-machineset
+      path: /validate-cluster-x-k8s-io-v1alpha4-machineset
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.machineset.cluster.x-k8s.io
@@ -758,39 +736,43 @@ webhooks:
   - apiGroups:
     - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - machinesets
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-exp-cluster-x-k8s-io-v1alpha3-machinepool
+      path: /validate-cluster-x-k8s-io-v1alpha4-machinepool
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.exp.machinepool.cluster.x-k8s.io
+  name: validation.machinepool.cluster.x-k8s.io
   rules:
   - apiGroups:
-    - exp.cluster.x-k8s.io
+    - cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - machinepools
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-webhook-service
       namespace: undistro-system
-      path: /validate-addons-cluster-x-k8s-io-v1alpha3-clusterresourceset
+      path: /validate-addons-cluster-x-k8s-io-v1alpha4-clusterresourceset
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.clusterresourceset.addons.cluster.x-k8s.io
@@ -798,11 +780,10 @@ webhooks:
   - apiGroups:
     - addons.cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - clusterresourcesets
   sideEffects: None
-  

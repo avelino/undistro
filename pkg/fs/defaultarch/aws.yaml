@@ -32,3 +32,15 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   clusterName: {{.Name}}
+{{- if .AuthEnabled}}
+---
+apiVersion: app.undistro.io/v1alpha1
+kind: Identity
+metadata:
+  name: "undistro-identity-{{.Name}}"
+  namespace: {{.Namespace}}
+spec:
+  clusterName: {{.Name}}
+  paused: false
+  local: false
+{{- end }}

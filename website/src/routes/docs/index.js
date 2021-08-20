@@ -9,6 +9,7 @@ import Install from 'Util/docs/installingUndistro.md'
 import Config from 'Util/docs/configuration.md'
 import Providers from 'Util/docs/providers.md'
 import Cluster from 'Util/docs/cluster.md'
+import Identity from 'Util/docs/identity.md'
 import Policies from 'Util/docs/policies.md'
 import Helm from 'Util/docs/helm.md'
 import Community from 'Util/docs/community.md'
@@ -37,6 +38,7 @@ export default function DocsRoute () {
 						<Config />
 						<Providers />
 						<Cluster />
+						<Identity />
 						<Policies />
 						<Helm />
 						<Community />

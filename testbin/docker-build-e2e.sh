@@ -36,6 +36,7 @@ function exit_and_inform {
 }
 
 function make_and_push {
+	local host=$1
 	make manager;
 	mv ./bin/manager .;
 	docker build -t $addr/undistro:$tag .;
@@ -61,7 +62,7 @@ if test -n "$proj_root"; then
 		exit_and_inform 2
 	fi
 	cd "$proj_root"
-	make_and_push
+	make_and_push $2
 else
 	exit_and_inform 0
 fi

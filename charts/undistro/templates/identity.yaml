@@ -1,0 +1,10 @@
+{{- if .Values.identity.enabled }}
+---
+apiVersion: app.undistro.io/v1alpha1
+kind: Identity
+metadata:
+  name: {{ .Values.identity.name }}
+  namespace: {{ .Values.identity.namespace }}
+spec:
+  paused: {{ .Values.identity.paused }}
+{{- end }}

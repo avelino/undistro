@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: undistro-system
+  name: metallb-config
+  annotations:
+    helm.sh/hook: pre-install
+data:
+  config: |
+{{- toYaml .Values.configInline | nindent 4 }}

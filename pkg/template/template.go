@@ -26,6 +26,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/getupio-undistro/undistro/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -47,7 +48,12 @@ type Render struct {
 
 // New constructs a new Render instance with the supplied options.
 func New(options ...Options) (*Render, error) {
-	funcs := []template.FuncMap{sprig.TxtFuncMap()}
+	funcs := []template.FuncMap{
+		sprig.TxtFuncMap(),
+		{
+			"slugtaint": slugfyTaintEffect,
+		},
+	}
 	var o Options
 	if len(options) == 0 {
 		o = Options{
@@ -126,6 +132,10 @@ func (r *Render) compileTemplates() error {
 		return nil
 	})
 	return err
+}
+
+func slugfyTaintEffect(taintEffect corev1.TaintEffect) string {
+	return util.Slugify(string(taintEffect))
 }
 
 // TemplateLookup is a wrapper around template.Lookup and returns

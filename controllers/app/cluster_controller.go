@@ -25,14 +25,13 @@ import (
 	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/cloud"
 	"github.com/getupio-undistro/undistro/pkg/fs"
-	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/meta"
 	"github.com/getupio-undistro/undistro/pkg/retry"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/getupio-undistro/undistro/pkg/template"
+	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,9 +39,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha3"
-	capicp "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha3"
-	capiexp "sigs.k8s.io/cluster-api/exp/api/v1alpha3"
+	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
+	capicp "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	capiexp "sigs.k8s.io/cluster-api/exp/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,7 +136,7 @@ func (r *ClusterReconciler) templateVariables(ctx context.Context, c client.Clie
 			return nil, err
 		}
 		if !apierrors.IsNotFound(err) {
-			split := strings.Split(cp.Spec.InfrastructureTemplate.Name, "-")
+			split := strings.Split(cp.Spec.MachineTemplate.InfrastructureRef.Name, "-")
 			cl.Status.LastUsedUID = split[len(split)-1]
 		}
 	}
@@ -149,9 +148,6 @@ func (r *ClusterReconciler) templateVariables(ctx context.Context, c client.Clie
 
 func (r *ClusterReconciler) getBastionIP(ctx context.Context, cl appv1alpha1.Cluster, capiCluster capi.Cluster) (string, error) {
 	ref := capiCluster.Spec.InfrastructureRef
-	if cl.Spec.InfrastructureProvider.IsManaged() {
-		ref = capiCluster.Spec.ControlPlaneRef
-	}
 	if ref != nil {
 		key := client.ObjectKey{
 			Name:      ref.Name,
@@ -243,110 +239,10 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, log logr.Logger, cl a
 	cl.Status.Workers = cl.Spec.Workers
 	cl.Status.BastionConfig = cl.Spec.Bastion
 	if capiCluster.Status.ControlPlaneReady && capiCluster.Status.InfrastructureReady {
-		err = r.reconcileNodes(ctx, cl, capiCluster)
-		if err != nil {
-			return appv1alpha1.ClusterNotReady(cl, meta.ReconcileNodesFailed, err.Error()), ctrl.Result{}, err
-		}
 		cl = appv1alpha1.ClusterReady(cl)
 		return cl, ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
 	return appv1alpha1.ClusterNotReady(cl, meta.WaitProvisionReason, "wait cluster to be provisioned"), ctrl.Result{RequeueAfter: 30 * time.Second}, nil
-}
-
-func (r *ClusterReconciler) reconcileNodes(ctx context.Context, cl appv1alpha1.Cluster, capiCluster capi.Cluster) error {
-	wc, err := kube.NewClusterClient(ctx, r.Client, cl.Name, cl.GetNamespace())
-	if err != nil {
-		return err
-	}
-	if !cl.Spec.InfrastructureProvider.IsManaged() {
-		if len(cl.Spec.ControlPlane.Labels) > 0 || len(cl.Spec.ControlPlane.Taints) > 0 {
-			cp, _, err := util.GetMachinesForCluster(ctx, r.Client, &capiCluster)
-			if err != nil {
-				return err
-			}
-			for _, m := range cp.Items {
-				key := client.ObjectKey{
-					Name: m.Status.NodeRef.Name,
-				}
-				node := corev1.Node{}
-				err = wc.Get(ctx, key, &node)
-				if err != nil {
-					return err
-				}
-				if node.Labels == nil {
-					node.Labels = make(map[string]string)
-				}
-				for k, v := range cl.Spec.ControlPlane.Labels {
-					node.Labels[k] = v
-				}
-				node.Spec.Taints = append(node.Spec.Taints, cl.Spec.ControlPlane.Taints...)
-				node.Spec.Taints = util.RemoveDuplicateTaints(node.Spec.Taints)
-				node.TypeMeta = metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Node",
-				}
-				_, err = util.CreateOrUpdate(ctx, wc, &node)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	// workers
-	mpList := capiexp.MachinePoolList{}
-	err = r.List(ctx, &mpList, client.HasLabels{capi.ClusterLabelName})
-	if err != nil {
-		return err
-	}
-	for _, mp := range mpList.Items {
-		if mp.Labels[capi.ClusterLabelName] != cl.Name {
-			continue
-		}
-		w, err := cl.GetWorkerRefByMachinePool(mp.Name)
-		if err != nil {
-			if err == appv1alpha1.InvalidMP {
-				err = r.Delete(ctx, &mp)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			return err
-		}
-		if len(w.Labels) == 0 && len(w.Taints) == 0 {
-			continue
-		}
-		for _, ref := range mp.Status.NodeRefs {
-			key := client.ObjectKey{
-				Name: ref.Name,
-			}
-			node := corev1.Node{}
-			err = wc.Get(ctx, key, &node)
-			if err != nil {
-				if client.IgnoreNotFound(err) != nil {
-					return err
-				}
-				continue
-			}
-			if node.Labels == nil {
-				node.Labels = make(map[string]string)
-			}
-			for k, v := range w.Labels {
-				node.Labels[k] = v
-			}
-			node.Spec.Taints = append(node.Spec.Taints, w.Taints...)
-			node.Spec.Taints = util.RemoveDuplicateTaints(node.Spec.Taints)
-			node.TypeMeta = metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "Node",
-			}
-			_, err = util.CreateOrUpdate(ctx, wc, &node)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (r *ClusterReconciler) hasDiff(cl *appv1alpha1.Cluster) bool {
@@ -367,7 +263,6 @@ func (r *ClusterReconciler) hasDiff(cl *appv1alpha1.Cluster) bool {
 func (r *ClusterReconciler) reconcileCNI(ctx context.Context, cl *appv1alpha1.Cluster) error {
 	const (
 		cniCalicoName = "calico"
-		chartRepo     = "https://registry.undistro.io/chartrepo/library"
 		calicoVersion = "3.19.1"
 	)
 
@@ -401,7 +296,7 @@ func (r *ClusterReconciler) reconcileCNI(ctx context.Context, cl *appv1alpha1.Cl
 				ClusterName:     fmt.Sprintf("%s/%s", cl.GetNamespace(), cl.Name),
 				Chart: appv1alpha1.ChartSource{
 					RepoChartSource: appv1alpha1.RepoChartSource{
-						RepoURL: chartRepo,
+						RepoURL: undistro.DefaultRepo,
 						Name:    cniCalicoName,
 						Version: calicoVersion,
 					},

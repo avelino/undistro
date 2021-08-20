@@ -21,11 +21,14 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"github.com/getupio-undistro/undistro/pkg/retry"
 	"io"
 	"math"
+	"math/rand"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -36,7 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	apiyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/klog/v2"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
@@ -204,35 +206,6 @@ func Ordinalize(n int) string {
 	return fmt.Sprintf("%d%s", n, m[an%10])
 }
 
-func GetMachinesForCluster(ctx context.Context, c client.Client, cluster *capi.Cluster) (cp *capi.MachineList, w *capi.MachineList, err error) {
-	var machines capi.MachineList
-	var machinesCP capi.MachineList
-	var machinesW capi.MachineList
-	if err := c.List(
-		ctx,
-		&machines,
-		client.InNamespace(cluster.Namespace),
-		client.MatchingLabels{
-			capi.ClusterLabelName: cluster.Name,
-		},
-	); err != nil {
-		return nil, nil, err
-	}
-	for _, m := range machines.Items {
-		if IsControlPlaneMachine(&m) {
-			machinesCP.Items = append(machinesCP.Items, m)
-			continue
-		}
-		machinesW.Items = append(machinesW.Items, m)
-	}
-	return &machinesCP, &machinesW, nil
-}
-
-func IsControlPlaneMachine(machine *capi.Machine) bool {
-	_, ok := machine.ObjectMeta.Labels[capi.MachineControlPlaneLabelName]
-	return ok
-}
-
 func ContainsStringInSlice(ss []string, str string) bool {
 	for _, s := range ss {
 		if s == str {
@@ -289,7 +262,48 @@ func IsLocalCluster(ctx context.Context, c client.Client) (bool, error) {
 }
 
 func ChartNameByFile(name string) string {
-	// just support chart-name format
-	// chart-name-test this format will fail
+	// just support `chart-name` format
+	// `chart-name-test` format will fail
 	return chartNameRegex.FindString(name)
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+var seededRand = rand.New(
+	rand.NewSource(time.Now().UnixNano()))
+
+func stringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func RandomString(length int) string {
+	return stringWithCharset(length, charset)
+}
+
+func GetCaFromSecret(ctx context.Context, c client.Client, secretName, dataField, ns string) (crt []byte, err error) {
+	objKey := client.ObjectKey{
+		Namespace: ns,
+		Name:      secretName,
+	}
+	secret := corev1.Secret{}
+	err = retry.WithExponentialBackoff(retry.NewBackoff(), func() error {
+		err = c.Get(ctx, objKey, &secret)
+		if err != nil {
+			return errors.Errorf("unable to get CA secret %s: %v", secretName, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	return secret.Data[dataField], nil
+}
+
+func IsMgmtCluster(clusterName string) bool {
+	return clusterName == ""
 }

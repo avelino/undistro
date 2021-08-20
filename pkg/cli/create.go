@@ -49,6 +49,7 @@ type ClusterOptions struct {
 	GenerateFile bool
 	K8sVersion   string
 	Region       string
+	AuthEnabled  bool
 }
 
 func NewClusterOptions(streams genericclioptions.IOStreams) *ClusterOptions {
@@ -71,7 +72,7 @@ func (o *ClusterOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 		case "ec2":
 			o.K8sVersion = "v1.21.3"
 		case "eks":
-			o.K8sVersion = "v1.20.4"
+			o.K8sVersion = "v1.20.7"
 		}
 	}
 	if len(args) != 1 {
@@ -150,12 +151,13 @@ func (o *ClusterOptions) RunCreateCluster(f cmdutil.Factory, cmd *cobra.Command)
 		}
 	}
 	vars := map[string]interface{}{
-		"Flavor":     o.Flavor,
-		"SSHKey":     o.SshKeyName,
-		"Namespace":  o.Namespace,
-		"Name":       o.ClusterName,
-		"K8sVersion": o.K8sVersion,
-		"Region":     o.Region,
+		"Flavor":      o.Flavor,
+		"SSHKey":      o.SshKeyName,
+		"Namespace":   o.Namespace,
+		"Name":        o.ClusterName,
+		"K8sVersion":  o.K8sVersion,
+		"Region":      o.Region,
+		"AuthEnabled": o.AuthEnabled,
 	}
 	objs, err := template.GetObjs(fs.DefaultArchFS, "defaultarch", o.Infra, vars)
 	if err != nil {
@@ -210,11 +212,11 @@ func (o *ClusterOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.K8sVersion, "k8s-version", o.K8sVersion, "the Kubernetes version (default v1.19.8)")
 	flags.StringVar(&o.Region, "region", o.Region, "the region where cluster will be created")
 	flags.BoolVar(&o.GenerateFile, "generate-file", o.GenerateFile, "Generate cluster YAML file")
+	flags.BoolVar(&o.AuthEnabled, "enable-auth", o.AuthEnabled, "Activate the Authnz management feature")
 }
 
-func NewCmdCluster(f cmdutil.Factory, flags *pflag.FlagSet, streams genericclioptions.IOStreams) *cobra.Command {
+func NewCmdCluster(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewClusterOptions(streams)
-	o.AddFlags(flags)
 	cmd := &cobra.Command{
 		Use:                   "cluster [cluster name]",
 		DisableFlagsInUseLine: true,
@@ -228,11 +230,12 @@ func NewCmdCluster(f cmdutil.Factory, flags *pflag.FlagSet, streams genericcliop
 			cmdutil.CheckErr(o.RunCreateCluster(f, cmd))
 		},
 	}
+	o.AddFlags(cmd.Flags())
 	return cmd
 }
 
-func NewCmdCreate(f cmdutil.Factory, flags *pflag.FlagSet, streams genericclioptions.IOStreams) *cobra.Command {
+func NewCmdCreate(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := create.NewCmdCreate(f, streams)
-	cmd.AddCommand(NewCmdCluster(f, flags, streams))
+	cmd.AddCommand(NewCmdCluster(f, streams))
 	return cmd
 }

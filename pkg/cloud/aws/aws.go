@@ -38,14 +38,13 @@ import (
 	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
 	metadatav1alpha1 "github.com/getupio-undistro/undistro/apis/metadata/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/cloud/aws/cloudformation"
-	"github.com/getupio-undistro/undistro/pkg/util"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha3"
+	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -65,9 +64,6 @@ aws_session_token = {{ .SessionToken }}
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-//go:embed undistro-aws.yaml
-var identity []byte
 
 //go:embed instancetypes.json
 var instanceTypes []byte
@@ -92,10 +88,10 @@ var Regions = []string{
 
 var flavors = map[string][]string{
 	appv1alpha1.EC2.String(): {
-		"v1.18.19", "v1.18.20", "v1.19.12", "1.19.13", "v1.20.8", "1.20.9", "v1.21.2", "v1.21.3",
+		"v1.19.12", "v1.19.13", "v1.20.8", "1.20.9", "v1.21.2", "v1.21.3",
 	},
 	appv1alpha1.EKS.String(): {
-		"v1.18.16", "v1.19.8", "v1.20.4",
+		"v1.19.8", "v1.20.7", "v1.21.2",
 	},
 }
 
@@ -200,7 +196,7 @@ func ReconcileLaunchTemplate(ctx context.Context, r client.Client, cl *appv1alph
 				Namespace: cl.GetNamespace(),
 			}
 			u := unstructured.Unstructured{}
-			u.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1alpha3")
+			u.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1alpha4")
 			u.SetKind(kindByFlavor(cl.Spec.InfrastructureProvider.Flavor))
 			err := r.Get(ctx, key, &u)
 			if err != nil {
@@ -348,20 +344,6 @@ func Init(ctx context.Context, c client.Client) error {
 	err = reconcileCloudformation(cred)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func PostInstall(ctx context.Context, c client.Client) error {
-	objs, err := util.ToUnstructured(identity)
-	if err != nil {
-		return err
-	}
-	for _, o := range objs {
-		_, err = util.CreateOrUpdate(ctx, c, &o)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

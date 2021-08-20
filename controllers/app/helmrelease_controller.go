@@ -88,7 +88,7 @@ func (r *HelmReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 	defer func() {
-		patchOpts := []patch.Option{} 
+		patchOpts := []patch.Option{}
 		if err == nil {
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}

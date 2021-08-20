@@ -92,7 +92,7 @@ Check infrastructure provider specific page to see the prerequisites.
 ## Get cluster kubeconfig
 
 ```bash
-undistro get kubeconfig {cluster name} -n namespace
+undistro get kubeconfig {cluster name} -n namespace --admin
 ```
 
 ## See cluster events

@@ -42,8 +42,4 @@ func main() {
 	if err != nil {
 		klog.Fatal(err)
 	}
-	err = aws.PostInstall(ctx, c)
-	if err != nil {
-		klog.Fatal(err)
-	}
 }

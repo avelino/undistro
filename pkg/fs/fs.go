@@ -26,6 +26,7 @@ import (
 //go:embed clustertemplates/*
 var FS embed.FS
 
+//go:generate helm package -u ../../charts/metallb -d chart
 //go:generate helm package -u ../../charts/cert-manager -d chart
 //go:generate helm package -u ../../charts/cluster-api -d chart
 //go:generate helm package -u ../../charts/ingress-nginx -d chart

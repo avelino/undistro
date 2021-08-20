@@ -1,5 +1,5 @@
 
-# 7 - Policies
+# 8 - Policies
 
 The purpose of policies in UnDistro is simple: They define settings that should be applied across the cluster. But at a high level, UnDistro policies serve to create and enforce effective and efficient governance rules.
 

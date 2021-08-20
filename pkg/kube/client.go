@@ -133,28 +133,12 @@ const (
 	KubeconfigDataName = "value"
 	// Kubeconfig is the secret name suffix storing the Cluster Kubeconfig.
 	Kubeconfig = Purpose("kubeconfig")
-	// UserKubeconfig is the secret name suffix storing the Cluster Kubeconfig for user usage.
-	UserKubeconfig = Purpose("user-kubeconfig")
 )
 
 func GetInternalKubeconfig(ctx context.Context, c client.Reader, cluster client.ObjectKey) ([]byte, error) {
 	out, err := getSecret(ctx, c, cluster, Kubeconfig)
 	if err != nil {
 		return nil, err
-	}
-	return toKubeconfigBytes(out)
-}
-
-func GetKubeconfig(ctx context.Context, c client.Reader, cluster client.ObjectKey) ([]byte, error) {
-	out, err := getSecret(ctx, c, cluster, UserKubeconfig)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-		out, err = getSecret(ctx, c, cluster, Kubeconfig)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return toKubeconfigBytes(out)
 }

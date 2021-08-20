@@ -23,13 +23,16 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/getupio-undistro/undistro/pkg/version"
+	pinnipedcmd "github.com/getupio-undistro/undistro/third_party/pinniped/pinniped/cmd"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	"k8s.io/kubectl/pkg/cmd/delete"
+	"k8s.io/kubectl/pkg/cmd/describe"
 	"k8s.io/kubectl/pkg/cmd/logs"
 	"k8s.io/kubectl/pkg/cmd/patch"
+	"k8s.io/kubectl/pkg/cmd/rollout"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -92,15 +95,21 @@ func NewUndistroCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	cfgFlags := NewConfigFlags()
 	cfgFlags.AddFlags(flags, flag.CommandLine)
 	ioStreams := genericclioptions.IOStreams{In: in, Out: out, ErrOut: err}
+	cmd.AddCommand(NewCmdSetup(ioStreams))
+	cmd.AddCommand(NewCmdDestroy(ioStreams))
 	f := cmdutil.NewFactory(cfgFlags)
 	cmd.AddCommand(delete.NewCmdDelete(f, ioStreams))
 	cmd.AddCommand(patch.NewCmdPatch(f, ioStreams))
 	cmd.AddCommand(apply.NewCmdApply("undistro", f, ioStreams))
+	cmd.AddCommand(describe.NewCmdDescribe("undistro", f, ioStreams))
 	cmd.AddCommand(logs.NewCmdLogs(f, ioStreams))
+	cmd.AddCommand(rollout.NewCmdRollout(f, ioStreams))
 	cmd.AddCommand(apiresources.NewCmdAPIVersions(f, ioStreams))
 	cmd.AddCommand(apiresources.NewCmdAPIResources(f, ioStreams))
+	cmd.AddCommand(pinnipedcmd.LoginCmd)
+	cmd.AddCommand(pinnipedcmd.NewWhoamiCommand(pinnipedcmd.GetRealConciergeClientset))
 	cmd.AddCommand(NewCmdGet(f, ioStreams))
-	cmd.AddCommand(NewCmdCreate(f, flags, ioStreams))
+	cmd.AddCommand(NewCmdCreate(f, ioStreams))
 	cmd.AddCommand(NewCmdInstall(cfgFlags, ioStreams))
 	cmd.AddCommand(NewCmdMove(cfgFlags, ioStreams))
 	cmd.AddCommand(NewCmdShowProgress(f, ioStreams))

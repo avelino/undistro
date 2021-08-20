@@ -1,11 +1,10 @@
----
 apiVersion: v2
-appVersion: "0.9.2"
+appVersion: "v0.10.0"
 description: "A pinniped Helm chart for Kubernetes"
+name: pinniped-concierge
+type: application
+version: "0.10.0"
 home: "https://pinniped.dev/"
 maintainers:
   - name: getupio-undistro
     url: https://undistro.io/
-name: pinniped-concierge
-type: application
-version: "0.9.2"

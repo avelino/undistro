@@ -16,10 +16,13 @@ limitations under the License.
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -38,6 +41,7 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/getupio-undistro/undistro/pkg/version"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -45,7 +49,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
+	knet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"sigs.k8s.io/cluster-api/util/kubeconfig"
@@ -64,11 +68,15 @@ var (
 )
 
 const (
-	undistroRepo = "https://registry.undistro.io/chartrepo/library"
-	ns           = undistro.Namespace
+	undistroRepo  = undistro.DefaultRepo
+	ns            = undistro.Namespace
+	cfgSecretName = "undistro-config"
 )
 
 var providersInfo = map[string]metadatav1alpha1.ProviderInfo{
+	"metallb": {
+		Category: metadatav1alpha1.ProviderCore,
+	},
 	"cert-manager": {
 		Category: metadatav1alpha1.ProviderCore,
 	},
@@ -77,7 +85,7 @@ var providersInfo = map[string]metadatav1alpha1.ProviderInfo{
 	},
 	"undistro": {
 		Category:   metadatav1alpha1.ProviderCore,
-		SecretName: "undistro-config",
+		SecretName: cfgSecretName,
 	},
 	"ingress-nginx": {
 		Category: metadatav1alpha1.ProviderCore,
@@ -123,7 +131,7 @@ func (o *InstallOptions) Validate() error {
 	return nil
 }
 
-func (o *InstallOptions) installChart(ctx context.Context, c client.Client, restGetter genericclioptions.RESTClientGetter, chartName string, overrideValuesMap map[string]interface{}) (*appv1alpha1.HelmRelease, error) {
+func (o *InstallOptions) installChart(restGetter genericclioptions.RESTClientGetter, chartName string, overrideValuesMap map[string]interface{}) (*appv1alpha1.HelmRelease, error) {
 	overrideValues := &apiextensionsv1.JSON{}
 	if overrideValuesMap == nil {
 		overrideValuesMap = make(map[string]interface{})
@@ -241,8 +249,16 @@ func (o *InstallOptions) installChart(ctx context.Context, c client.Client, rest
 	return &hr, err
 }
 
-func (o *InstallOptions) checkEnabledList(cfg map[string]interface{}) []string {
-	p := sets.NewString("cert-manager", "cluster-api", "undistro", "ingress-nginx") // force core order installations
+func (o *InstallOptions) checkEnabledList(ctx context.Context, c client.Client, cfg map[string]interface{}) []string {
+	p := []string{"cert-manager", "cluster-api", "undistro", "ingress-nginx"}
+	isLocal, err := util.IsLocalCluster(ctx, c)
+	if err != nil {
+		return nil
+	}
+	if isLocal {
+		p = []string{"metallb", "cert-manager", "cluster-api", "undistro", "ingress-nginx"}
+	}
+
 	for k := range cfg {
 		_, ok := providersInfo[k]
 		if !ok {
@@ -263,9 +279,11 @@ func (o *InstallOptions) checkEnabledList(cfg map[string]interface{}) []string {
 		if !enabled {
 			continue
 		}
-		p = p.Insert(k)
+		if !util.ContainsStringInSlice(p, k) {
+			p = append(p, k)
+		}
 	}
-	return p.List()
+	return p
 }
 
 func (o *InstallOptions) applyMetadata(ctx context.Context, c client.Client, providers ...string) error {
@@ -335,7 +353,7 @@ func (o *InstallOptions) installCore(ctx context.Context, c client.Client, restG
 			}
 			values = util.MergeMaps(vMap, values)
 		}
-		hr, err := o.installChart(ctx, c, restGetter, chart, values)
+		hr, err := o.installChart(restGetter, chart, values)
 		if err != nil {
 			return nil, err
 		}
@@ -366,6 +384,142 @@ func (o *InstallOptions) installCore(ctx context.Context, c client.Client, restG
 	}
 	return hrs, nil
 }
+
+func validateSupervisorConfig(ctx context.Context, c client.Client, out io.Writer) error {
+	// is required to use the local IP for the Pinniped Federation Domain Issuer
+	ip, err := knet.ChooseHostInterface()
+	if err != nil {
+		return err
+	}
+	issuer := fmt.Sprintf("https://%s/auth", ip.String())
+	// retrieve the config map for update
+	cmKey := client.ObjectKey{
+		Name:      "identity-config",
+		Namespace: undistro.Namespace,
+	}
+	cm := corev1.ConfigMap{}
+	err = c.Get(ctx, cmKey, &cm)
+	if err != nil {
+		return err
+	}
+	// edit configmap issuer address
+	f := cm.Data["federationdomain.yaml"]
+	fede := strings.ReplaceAll(f, "|", "")
+	fedeDomain := make(map[string]interface{})
+	byt := []byte(fede)
+	err = yaml.Unmarshal(byt, &fedeDomain)
+	if err != nil {
+		return err
+	}
+	fedeDomain["issuer"] = issuer
+	b, err := yaml.Marshal(fedeDomain)
+	if err != nil {
+		return err
+	}
+	cm.Data["federationdomain.yaml"] = string(b)
+	cm.TypeMeta = metav1.TypeMeta{
+		Kind:       "ConfigMap",
+		APIVersion: corev1.SchemeGroupVersion.String(),
+	}
+	// update the configmap
+	_, err = util.CreateOrUpdate(ctx, c, &cm)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateKindConfig(ctx context.Context, c client.Client, out io.Writer) error {
+	// get kind container ip for metallb configuration
+	kindContainerName := "kind-control-plane"
+	cmd := exec.Command(
+		"docker",
+		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'", kindContainerName,
+	)
+	b := bytes.Buffer{}
+	cmd.Stdout = &b
+	err := cmd.Run()
+	if err != nil {
+		fmt.Fprintln(out, "error getting kind container IP", err.Error())
+	}
+	containerIP := strings.TrimSpace(strings.ReplaceAll(b.String(), "'", ""))
+	// format container IP
+	containerIPFmt := fmt.Sprintf("%s-%s", containerIP, containerIP)
+	// retrieve metallb configmap
+	cmKey := client.ObjectKey{
+		Name:      "metallb-config",
+		Namespace: undistro.Namespace,
+	}
+	cm := corev1.ConfigMap{}
+	err = c.Get(ctx, cmKey, &cm)
+	if err != nil {
+		return err
+	}
+
+	// get the address-pools field and unmarshal it
+	metallbConfig := cm.Data["config"]
+	byt := []byte(metallbConfig)
+	type AddressPools struct {
+		Name      string   `json:"name,omitempty"`
+		Protocol  string   `json:"protocol,omitempty"`
+		Addresses []string `json:"addresses,omitempty"`
+	}
+	type addressPoolsYaml struct {
+		AddressPools []AddressPools `json:"address-pools,omitempty"`
+	}
+	var ayaml addressPoolsYaml
+	err = yaml.Unmarshal(byt, &ayaml)
+	if err != nil {
+		return err
+	}
+	ayaml.AddressPools[0].Addresses = []string{containerIPFmt}
+	by, err := yaml.Marshal(ayaml)
+	if err != nil {
+		return err
+	}
+	cm.Data["config"] = string(by)
+	// update the configmap
+	cm.TypeMeta = metav1.TypeMeta{
+		Kind:       "ConfigMap",
+		APIVersion: corev1.SchemeGroupVersion.String(),
+	}
+	_, err = util.CreateOrUpdate(ctx, c, &cm)
+	if err != nil {
+		return err
+	}
+
+	cmd = exec.Command(
+		"undistro",
+		"-n", "undistro-system",
+		"rollout", "restart", "deployment", "metallb-controller",
+	)
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	// call undistro rollout to update metallb config
+	return nil
+}
+
+func (o *InstallOptions) validateLocalEnvironment(ctx context.Context, c client.Client) error {
+	isLocal, err := util.IsLocalCluster(ctx, c)
+	if err != nil {
+		return err
+	}
+	if isLocal {
+		fmt.Fprintln(o.IOStreams.Out, "Cluster is local. Preparing environment...")
+		err = validateSupervisorConfig(ctx, c, o.IOStreams.Out)
+		if err != nil {
+			return err
+		}
+		err = validateKindConfig(ctx, c, o.IOStreams.Out)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error {
 	restCfg, err := f.ToRESTConfig()
 	if err != nil {
@@ -378,7 +532,7 @@ func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error
 		return err
 	}
 	restGetter := kube.NewInClusterRESTClientGetter(restCfg, ns)
-	if o.ClusterName != "" {
+	if !util.IsMgmtCluster(o.ClusterName) {
 		byt, err := kubeconfig.FromSecret(cmd.Context(), c, util.ObjectKeyFromString(o.ClusterName))
 		if err != nil {
 			return err
@@ -406,8 +560,15 @@ func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error
 			return err
 		}
 	}
-	providers := o.checkEnabledList(cfg)
+	providers := o.checkEnabledList(cmd.Context(), c, cfg)
+	if providers == nil {
+		return errors.New("is required to install at least one provider")
+	}
 	hrs, err := o.installCore(cmd.Context(), c, restGetter, cfg, providers...)
+	if err != nil {
+		return err
+	}
+	err = o.validateLocalEnvironment(cmd.Context(), c)
 	if err != nil {
 		return err
 	}
@@ -417,7 +578,8 @@ func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error
 		return err
 	}
 	fmt.Fprint(o.IOStreams.Out, "Waiting all components to be ready")
-	ctx, cancel := context.WithDeadline(cmd.Context(), time.Now().Add(10*time.Minute))
+	deadline := time.Now().Add(10 * time.Minute)
+	ctx, cancel := context.WithDeadline(cmd.Context(), deadline)
 	defer cancel()
 	for {
 		select {
@@ -430,7 +592,22 @@ func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error
 			if err != nil {
 				return err
 			}
+			var addrs []string
 			for _, hr := range hrs {
+				if hr.Name == "undistro" {
+					type undistroCfg struct {
+						Ingress struct {
+							IpAddresses []string `json:"ipAddresses,omitempty"`
+							Hosts       []string `json:"hosts,omitempty"`
+						} `json:"ingress,omitempty"`
+					}
+					unCfg := undistroCfg{}
+					err = json.Unmarshal(hr.Spec.Values.Raw, &unCfg)
+					if err != nil {
+						return err
+					}
+					addrs = append(unCfg.Ingress.IpAddresses, unCfg.Ingress.Hosts...)
+				}
 				_, err = util.CreateOrUpdate(ctx, c, &hr)
 				if err != nil {
 					ready = false
@@ -446,14 +623,15 @@ func (o *InstallOptions) RunInstall(f cmdutil.Factory, cmd *cobra.Command) error
 				}
 			}
 			if ready {
-				fmt.Fprintln(o.IOStreams.Out, "\n\nManagement cluster is ready to use.")
+				guiUrl := fmt.Sprintf("https://%s", addrs[0])
+				msg := fmt.Sprintf("\n\nManagement cluster is ready to use. \nUI is available at %s\n", guiUrl)
+				fmt.Fprintln(o.IOStreams.Out, msg)
 				return nil
 			}
 			fmt.Fprint(o.IOStreams.Out, ".")
 			<-time.After(15 * time.Second)
 		}
 	}
-
 }
 
 func NewCmdInstall(f *ConfigFlags, streams genericclioptions.IOStreams) *cobra.Command {

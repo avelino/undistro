@@ -18,8 +18,10 @@ package cli
 import (
 	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
+	pinnipedcmd "github.com/getupio-undistro/undistro/third_party/pinniped/pinniped/cmd"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/get"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -28,14 +30,22 @@ import (
 
 type KubeconfigOptions struct {
 	genericclioptions.IOStreams
-	Namespace   string
-	ClusterName string
+	Namespace      string
+	ClusterName    string
+	Admin          bool
+	Kubeconfigdeps pinnipedcmd.KubeconfigDeps
 }
 
-func NewKubeconfigOptions(streams genericclioptions.IOStreams) *KubeconfigOptions {
-	return &KubeconfigOptions{
-		IOStreams: streams,
+func (k *KubeconfigOptions) addFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&k.Admin, "admin", k.Admin, "Get admin kubeconfig")
+}
+
+func NewKubeconfigOptions(streams genericclioptions.IOStreams, deps pinnipedcmd.KubeconfigDeps) *KubeconfigOptions {
+	var kubeOpts = &KubeconfigOptions{
+		IOStreams:      streams,
+		Kubeconfigdeps: deps,
 	}
+	return kubeOpts
 }
 
 func (o *KubeconfigOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
@@ -44,14 +54,14 @@ func (o *KubeconfigOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args
 	if err != nil {
 		return err
 	}
-	if len(args) != 1 {
+	if len(args) != 1 && o.Admin {
 		return errors.New("required 1 argument")
 	}
 	o.ClusterName = args[0]
 	return nil
 }
 
-func (o *KubeconfigOptions) RunGetKubeconfig(f cmdutil.Factory, cmd *cobra.Command) error {
+func (o *KubeconfigOptions) RunGetKubeconfig(f cmdutil.Factory, cmd *cobra.Command, params pinnipedcmd.GetKubeconfigParams) error {
 	cfg, err := f.ToRESTConfig()
 	if err != nil {
 		return errors.Errorf("unable to get kubeconfig: %v", err)
@@ -62,35 +72,49 @@ func (o *KubeconfigOptions) RunGetKubeconfig(f cmdutil.Factory, cmd *cobra.Comma
 	if err != nil {
 		return errors.Errorf("unable to create client: %v", err)
 	}
-	byt, err := kube.GetKubeconfig(cmd.Context(), c, client.ObjectKey{
-		Namespace: o.Namespace,
-		Name:      o.ClusterName,
-	})
-	if err != nil {
-		return errors.Errorf("unable to get kubeconfig: %v", err)
+	var byt []byte
+	if o.Admin {
+		byt, err = kube.GetInternalKubeconfig(cmd.Context(), c, client.ObjectKey{
+			Namespace: o.Namespace,
+			Name:      o.ClusterName,
+		})
+		if err != nil {
+			return errors.Errorf("unable to get kubeconfig: %v", err)
+		}
+		_, err = o.IOStreams.Out.Write(byt)
+		if err != nil {
+			return errors.Errorf("unable to get kubeconfig: %v", err)
+		}
+	} else {
+		err = pinnipedcmd.RunGetKubeconfig(cmd.Context(), o.IOStreams.Out, o.Kubeconfigdeps, params)
+		if err != nil {
+			return errors.Errorf("unable to get kubeconfig: %v", err)
+		}
 	}
-	_, err = o.IOStreams.Out.Write(byt)
-	return err
+	return nil
 }
 
 func NewCmdKubeconfig(f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewKubeconfigOptions(streams)
+	o := NewKubeconfigOptions(streams, pinnipedcmd.KubeconfigRealDeps())
 	cmd := &cobra.Command{
 		Use:                   "kubeconfig [cluster name]",
 		DisableFlagsInUseLine: true,
 		Short:                 "Get kubeconfig of a cluster",
 		Long:                  LongDesc(`Get kubeconfig of a cluster created or imported by UnDistro.`),
-		Example: Examples(`
+		Example: Examples(`		
 		# Get kubeconfig of a cluster in default namespace
 		undistro get kubeconfig cool-cluster
 		# Get kubeconfig of a cluster in others namespace
 		undistro get kubeconfig cool-cluster -n cool-namespace
 		`),
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(o.Complete(f, cmd, args))
-			cmdutil.CheckErr(o.RunGetKubeconfig(f, cmd))
-		},
 	}
+	cmd, flags := pinnipedcmd.SetupPinnipedCommand(cmd)
+	fn := func(cmd *cobra.Command, args []string) {
+		cmdutil.CheckErr(o.Complete(f, cmd, args))
+		cmdutil.CheckErr(o.RunGetKubeconfig(f, cmd, flags))
+	}
+	cmd.Run = fn
+	o.addFlags(cmd.Flags())
 	return cmd
 }
 

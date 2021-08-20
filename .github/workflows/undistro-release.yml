@@ -68,3 +68,4 @@ jobs:
           helm push ingress-nginx undistro --username $HELM_LOGIN --password  $HELM_PASSWORD --force
           helm push pinniped-concierge undistro --username $HELM_LOGIN --password  $HELM_PASSWORD --force
           helm push pinniped-supervisor undistro --username $HELM_LOGIN --password  $HELM_PASSWORD --force
+          helm push metallb undistro --username $HELM_LOGIN --password  $HELM_PASSWORD --force

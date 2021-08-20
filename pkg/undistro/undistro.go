@@ -15,7 +15,36 @@ limitations under the License.
 */
 package undistro
 
-const Namespace = "undistro-system"
+const (
+	Namespace   = "undistro-system"
+	DefaultRepo = "https://registry.undistro.io/chartrepo/library"
+)
+
+const LocalCluster = "undistro"
+
+var KindCmdDestroy = `kind delete cluster --name "%s"`
+
+var KindCmdCreate = `cat <<EOF | kind create cluster --name "%s" --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerPort: 6443
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+EOF`
 
 var TestResources = `---
 apiVersion: v1

@@ -20,48 +20,35 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-
-	"github.com/getupio-undistro/undistro/pkg/retry"
 	"github.com/getupio-undistro/undistro/pkg/undistro"
+	"github.com/getupio-undistro/undistro/pkg/util"
+
 	"github.com/pkg/errors"
 	"github.com/smallstep/truststore"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func InstallLocalCert(ctx context.Context, c client.Client) (err error) {
 	const caSecretName = "ca-secret"
 	const caName = "ca.crt"
-	objKey := client.ObjectKey{
-		Namespace: undistro.Namespace,
-		Name:      caSecretName,
-	}
-	secret := corev1.Secret{}
-	err = retry.WithExponentialBackoff(retry.NewBackoff(), func() error {
-		err = c.Get(ctx, objKey, &secret)
-		if err != nil {
-			return errors.Errorf("unable to get CA secret %s: %v", caSecretName, err)
-		}
-		return nil
-	})
+	crtByt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
 	if err != nil {
-		return err
+		return errors.Errorf("unable to get certificate %s: %v\n", caSecretName, err)
 	}
-	crtByt := secret.Data[caName]
+
 	block, _ := pem.Decode(crtByt)
 	rootCert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.Errorf("unable to parse certificate %s: %v", caName, err)
+		return errors.Errorf("unable to parse certificate %s: %v\n", caSecretName, err)
 	}
 
 	if !trusted(rootCert) {
 		err = truststore.Install(rootCert,
-			truststore.WithDebug(),
 			truststore.WithFirefox(),
 			truststore.WithJava(),
 		)
 		if err != nil {
-			return errors.Errorf("unable to install certificate %s: %v", caName, err)
+			return errors.Errorf("unable to install certificate%s: %v\n", caSecretName, err)
 		}
 	}
 	return nil

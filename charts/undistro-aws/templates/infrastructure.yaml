@@ -1,388 +1,458 @@
---- 
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  labels: 
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
     control-plane: controller-manager
   name: capa-controller-manager
   namespace: undistro-system
---- 
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
-  name: capa-leader-election-role
+  name: capa-leader-elect-role
   namespace: undistro-system
-rules: 
-  - 
-    apiGroups: 
-      - ""
-    resources: 
-      - configmaps
-    verbs: 
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - 
-    apiGroups: 
-      - ""
-    resources: 
-      - configmaps/status
-    verbs: 
-      - get
-      - update
-      - patch
---- 
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-metadata: 
-  creationTimestamp: ~
-  labels: 
+metadata:
+  creationTimestamp: null
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-manager-role
-rules: 
-  - 
-    apiGroups: 
-      - ""
-    resources: 
-      - events
-    verbs: 
-      - create
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - ""
-    resources: 
-      - secrets
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - cluster.x-k8s.io
-    resources: 
-      - clusters
-      - clusters/status
-    verbs: 
-      - get
-      - list
-      - watch
-  - 
-    apiGroups: 
-      - cluster.x-k8s.io
-    resources: 
-      - machines
-      - machines/status
-    verbs: 
-      - get
-      - list
-      - watch
-  - 
-    apiGroups: 
-      - controlplane.cluster.x-k8s.io
-    resources: 
-      - awsmanagedcontrolplanes
-      - awsmanagedcontrolplanes/status
-    verbs: 
-      - get
-      - list
-      - watch
-  - 
-    apiGroups: 
-      - ""
-    resources: 
-      - events
-    verbs: 
-      - create
-      - get
-      - list
-      - patch
-      - watch
-  - 
-    apiGroups: 
-      - exp.cluster.x-k8s.io
-    resources: 
-      - machinepools
-      - machinepools/status
-    verbs: 
-      - get
-      - list
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsclustercontrolleridentities
-    verbs: 
-      - create
-      - get
-      - list
-      - watch
-      - patch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsclusterroleidentities
-      - awsclusterstaticidentities
-    verbs: 
-      - get
-      - list
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsclusters
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsclusters/status
-    verbs: 
-      - get
-      - patch
-      - update
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsfargateprofiles
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsfargateprofiles/status
-    verbs: 
-      - get
-      - patch
-      - update
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmachinepools
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmachinepools/status
-    verbs: 
-      - get
-      - patch
-      - update
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmachines
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmachines/status
-    verbs: 
-      - get
-      - patch
-      - update
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmanagedclusters
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmanagedclusters/status
-    verbs: 
-      - get
-      - patch
-      - update
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmanagedmachinepools
-    verbs: 
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - 
-    apiGroups: 
-      - infrastructure.cluster.x-k8s.io
-    resources: 
-      - awsmanagedmachinepools/status
-    verbs: 
-      - get
-      - patch
-      - update
---- 
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - eksconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - eksconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - clusters/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - machinepools
+  - machines
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machinepools
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machinepools
+  - machinepools/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machines
+  - machines/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - awsmanagedcontrolplanes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - awsmanagedcontrolplanes
+  - awsmanagedcontrolplanes/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - awsmanagedcontrolplanes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsclustercontrolleridentities
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsclustercontrolleridentities
+  - awsclusterroleidentities
+  - awsclusterstaticidentities
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsclusterroleidentities
+  - awsclusterstaticidentities
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsfargateprofiles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsfargateprofiles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachinepools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachinepools
+  - awsmachinepools/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachinepools/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachines
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachines
+  - awsmachines/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmachines/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmanagedmachinepools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmanagedmachinepools
+  - awsmanagedmachinepools/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - awsmanagedmachinepools/status
+  verbs:
+  - get
+  - patch
+  - update
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-proxy-role
-rules: 
-  - 
-    apiGroups: 
-      - authentication.k8s.io
-    resources: 
-      - tokenreviews
-    verbs: 
-      - create
-  - 
-    apiGroups: 
-      - authorization.k8s.io
-    resources: 
-      - subjectaccessreviews
-    verbs: 
-      - create
---- 
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
-  name: capa-leader-election-rolebinding
+  name: capa-leader-elect-rolebinding
   namespace: undistro-system
-roleRef: 
+roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: capa-leader-election-role
-subjects: 
-  - 
-    kind: ServiceAccount
-    name: capa-controller-manager
-    namespace: undistro-system
---- 
+  name: capa-leader-elect-role
+subjects:
+- kind: ServiceAccount
+  name: capa-controller-manager
+  namespace: undistro-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-manager-rolebinding
-roleRef: 
+roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: capa-manager-role
-subjects: 
-  - 
-    kind: ServiceAccount
-    name: capa-controller-manager
-    namespace: undistro-system
---- 
+subjects:
+- kind: ServiceAccount
+  name: capa-controller-manager
+  namespace: undistro-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-proxy-rolebinding
-roleRef: 
+roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: capa-proxy-role
-subjects: 
-  - 
-    kind: ServiceAccount
-    name: capa-controller-manager
-    namespace: undistro-system
---- 
+subjects:
+- kind: ServiceAccount
+  name: capa-controller-manager
+  namespace: undistro-system
+---
 apiVersion: v1
 kind: Service
-metadata: 
-  annotations: 
+metadata:
+  annotations:
     prometheus.io/port: "8443"
     prometheus.io/scheme: https
     prometheus.io/scrape: "true"
-  labels: 
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
     control-plane: capa-controller-manager
   name: capa-controller-manager-metrics-service
   namespace: undistro-system
-spec: 
-  ports: 
-    - 
-      name: https
-      port: 8443
-      targetPort: https
-  selector: 
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
     cluster.x-k8s.io/provider: infrastructure-aws
     control-plane: capa-controller-manager
---- 
+---
 apiVersion: v1
 kind: Service
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-webhook-service
   namespace: undistro-system
-spec: 
-  ports: 
-    - 
-      port: 443
-      targetPort: webhook-server
-  selector: 
+spec:
+  ports:
+  - port: 443
+    targetPort: webhook-server
+  selector:
     cluster.x-k8s.io/provider: infrastructure-aws
 --- 
 apiVersion: apps/v1
@@ -392,88 +462,6 @@ metadata:
     cluster.x-k8s.io/provider: infrastructure-aws
     control-plane: capa-controller-manager
   name: capa-controller-manager
-  namespace: undistro-system
-spec: 
-  replicas: 1
-  selector: 
-    matchLabels: 
-      cluster.x-k8s.io/provider: infrastructure-aws
-      control-plane: capa-controller-manager
-  template: 
-    metadata: 
-      labels: 
-        cluster.x-k8s.io/provider: infrastructure-aws
-        control-plane: capa-controller-manager
-    spec:
-      initContainers:
-        -
-          name: aws-init
-          image: "{{ .Values.global.undistroRepository}}/aws-init:{{ .Values.global.undistroVersion }}"
-          command:
-            - /aws-init
-      containers: 
-        - 
-          args: 
-            - "--metrics-addr=127.0.0.1:8080"
-            - "--enable-leader-election"
-            - "--feature-gates=EKS=true,EKSEnableIAM=true,MachinePool=true,EventBridgeInstanceState=false,AutoControllerIdentityCreator=false"
-          env: 
-            - 
-              name: AWS_SHARED_CREDENTIALS_FILE
-              value: /home/.aws/credentials
-          image: "registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api-aws/cluster-api-aws-controller:v0.6.8"
-          imagePullPolicy: IfNotPresent
-          livenessProbe: 
-            httpGet: 
-              path: /healthz
-              port: healthz
-          name: manager
-          ports: 
-            - 
-              containerPort: 9440
-              name: healthz
-              protocol: TCP
-          readinessProbe: 
-            httpGet: 
-              path: /readyz
-              port: healthz
-          volumeMounts: 
-            - 
-              mountPath: /home/.aws
-              name: credentials
-        - 
-          args: 
-            - "--secure-listen-address=0.0.0.0:8443"
-            - "--upstream=http://127.0.0.1:8080/"
-            - "--logtostderr=true"
-            - "--v=10"
-          image: "registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1"
-          name: kube-rbac-proxy
-          ports: 
-            - 
-              containerPort: 8443
-              name: https
-      securityContext: 
-        fsGroup: 1000
-      serviceAccountName: capa-controller-manager
-      terminationGracePeriodSeconds: 10
-      tolerations: 
-        - 
-          effect: NoSchedule
-          key: node-role.kubernetes.io/master
-      volumes: 
-        - 
-          name: credentials
-          secret: 
-            secretName: undistro-aws-config
---- 
-apiVersion: apps/v1
-kind: Deployment
-metadata: 
-  labels: 
-    cluster.x-k8s.io/provider: infrastructure-aws
-    control-plane: capa-controller-manager
-  name: capa-controller-manager-webhook
   namespace: undistro-system
 spec: 
   replicas: 1
@@ -487,13 +475,34 @@ spec:
         cluster.x-k8s.io/provider: infrastructure-aws
         control-plane: capa-controller-manager
     spec: 
+      affinity: 
+        nodeAffinity: 
+          preferredDuringSchedulingIgnoredDuringExecution: 
+            - 
+              preference: 
+                matchExpressions: 
+                  - 
+                    key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+              weight: 10
+            - 
+              preference: 
+                matchExpressions: 
+                  - 
+                    key: node-role.kubernetes.io/master
+                    operator: Exists
+              weight: 10
       containers: 
         - 
           args: 
-            - "--metrics-addr=127.0.0.1:8080"
-            - "--webhook-port=9443"
-            - "--feature-gates=EKS=true,EKSEnableIAM=true,MachinePool=true,EventBridgeInstanceState=false,AutoControllerIdentityCreator=false"
-          image: "registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api-aws/cluster-api-aws-controller:v0.6.8"
+            - "--metrics-bind-addr=127.0.0.1:8080"
+            - "--leader-elect"
+            - "--feature-gates=EKS=true,EKSEnableIAM=true,EKSAllowAddRoles=true,EKSFargate=false,MachinePool=true,EventBridgeInstanceState=false,AutoControllerIdentityCreator=false"
+          env: 
+            - 
+              name: AWS_SHARED_CREDENTIALS_FILE
+              value: /home/.aws/credentials
+          image: "registry.undistro.io/k8s/cluster-api-aws/cluster-api-aws-controller:v0.7.0"
           imagePullPolicy: IfNotPresent
           livenessProbe: 
             httpGet: 
@@ -518,401 +527,616 @@ spec:
               mountPath: /tmp/k8s-webhook-server/serving-certs
               name: cert
               readOnly: true
+            - 
+              mountPath: /home/.aws
+              name: credentials
         - 
           args: 
             - "--secure-listen-address=0.0.0.0:8443"
             - "--upstream=http://127.0.0.1:8080/"
             - "--logtostderr=true"
             - "--v=10"
-          image: "registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1"
+          image: "registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.8.0"
           name: kube-rbac-proxy
           ports: 
             - 
               containerPort: 8443
               name: https
+      initContainers: 
+        - 
+          command: 
+            - /aws-init
+          image: "{{ .Values.global.undistroRepository}}/aws-init:{{ .Values.global.undistroVersion }}"
+          name: aws-init
+      metadata: ~
+      securityContext: 
+        fsGroup: 1000
+      serviceAccountName: capa-controller-manager
       terminationGracePeriodSeconds: 10
       tolerations: 
         - 
           effect: NoSchedule
           key: node-role.kubernetes.io/master
+        - 
+          effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
       volumes: 
         - 
           name: cert
           secret: 
             defaultMode: 420
             secretName: capa-webhook-service-cert
---- 
+        - 
+          name: credentials
+          secret: 
+            secretName: undistro-aws-config
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-serving-cert
   namespace: undistro-system
-spec: 
-  dnsNames: 
-    - capa-webhook-service.undistro-system.svc
-    - capa-webhook-service.undistro-system.svc.cluster.local
-  issuerRef: 
+spec:
+  dnsNames:
+  - capa-webhook-service.undistro-system.svc
+  - capa-webhook-service.undistro-system.svc.cluster.local
+  issuerRef:
     kind: Issuer
     name: capa-selfsigned-issuer
   secretName: capa-webhook-service-cert
---- 
+---
 apiVersion: cert-manager.io/v1
 kind: Issuer
-metadata: 
-  labels: 
+metadata:
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-selfsigned-issuer
   namespace: undistro-system
-spec: 
+spec:
   selfSigned: {}
---- 
-apiVersion: admissionregistration.k8s.io/v1beta1
+---
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
-metadata: 
-  annotations: 
+metadata:
+  annotations:
     cert-manager.io/inject-ca-from: undistro-system/capa-serving-cert
-  labels: 
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-mutating-webhook-configuration
-webhooks: 
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awscluster
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awscluster.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclusters
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsclustercontrolleridentity
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awsclustercontrolleridentity.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclustercontrolleridentities
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsclusterroleidentity
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awsclusterroleidentity.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclusterroleidentities
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmachine
-    failurePolicy: Fail
-    name: mutation.awsmachine.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmachines
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsfargateprofile
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awsfargateprofile.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsfargateprofiles
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmachinepool
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awsmachinepool.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmachinepools
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmanagedmachinepool
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: default.awsmanagedmachinepool.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmanagedmachinepools
-    sideEffects: None
---- 
-apiVersion: admissionregistration.k8s.io/v1beta1
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awscluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awscluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclustercontrolleridentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsclustercontrolleridentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclustercontrolleridentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclusterroleidentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsclusterroleidentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusterroleidentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclusterstaticidentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsclusterstaticidentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusterstaticidentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmachine
+  failurePolicy: Fail
+  name: mutation.awsmachine.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmachines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsfargateprofile
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsfargateprofile.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsfargateprofiles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmachinepool
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsmachinepool.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmachinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmanagedmachinepool
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsmanagedmachinepool.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmanagedmachinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-controlplane-cluster-x-k8s-io-v1alpha4-awsmanagedcontrolplane
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.awsmanagedcontrolplanes.controlplane.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - controlplane.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmanagedcontrolplanes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-bootstrap-cluster-x-k8s-io-v1alpha4-eksconfig
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.eksconfigs.bootstrap.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - bootstrap.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - eksconfig
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /mutate-bootstrap-cluster-x-k8s-io-v1alpha4-eksconfigtemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.eksconfigtemplates.bootstrap.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - bootstrap.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - eksconfigtemplate
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
-metadata: 
-  annotations: 
+metadata:
+  annotations:
     cert-manager.io/inject-ca-from: undistro-system/capa-serving-cert
-  labels: 
+  labels:
     cluster.x-k8s.io/provider: infrastructure-aws
   name: capa-validating-webhook-configuration
-webhooks: 
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awscluster
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awscluster.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclusters
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsclustercontrolleridentity
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsclustercontrolleridentity.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclustercontrolleridentities
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsclusterroleidentity
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsclusterroleidentity.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsclusterroleidentities
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmachine
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsmachine.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmachines
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmachinetemplate
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsmachinetemplate.infrastructure.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmachinetemplates
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsfargateprofile
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsfargateprofile.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - fargateprofiles
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmachinepool
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsmachinepool.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmachinepools
-    sideEffects: None
-  - 
-    clientConfig: 
-      caBundle: Cg==
-      service: 
-        name: capa-webhook-service
-        namespace: undistro-system
-        path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-awsmanagedmachinepool
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: validation.awsmanagedmachinepool.infrastructure.cluster.x-k8s.io
-    rules: 
-      - 
-        apiGroups: 
-          - infrastructure.cluster.x-k8s.io
-        apiVersions: 
-          - v1alpha3
-        operations: 
-          - CREATE
-          - UPDATE
-        resources: 
-          - awsmanagedmachinepools
-    sideEffects: None
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awscluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awscluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclustercontrolleridentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsclustercontrolleridentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclustercontrolleridentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclusterroleidentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsclusterroleidentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusterroleidentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclusterstaticidentity
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsclusterstaticidentity.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclusterstaticidentities
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmachine
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsmachine.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmachines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmachinetemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsmachinetemplate.infrastructure.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmachinetemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsfargateprofile
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsfargateprofile.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsfargateprofiles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmachinepool
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsmachinepool.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmachinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-awsmanagedmachinepool
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsmanagedmachinepool.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmanagedmachinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-controlplane-cluster-x-k8s-io-v1alpha4-awsmanagedcontrolplane
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.awsmanagedcontrolplanes.controlplane.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - controlplane.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - awsmanagedcontrolplanes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-bootstrap-cluster-x-k8s-io-v1alpha4-eksconfig
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.eksconfigs.bootstrap.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - bootstrap.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - eksconfig
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capa-webhook-service
+      namespace: undistro-system
+      path: /validate-bootstrap-cluster-x-k8s-io-v1alpha4-eksconfigtemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.eksconfigtemplates.bootstrap.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - bootstrap.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - eksconfigtemplate
+  sideEffects: None

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+#
+# Script to setup an local Kubernetes cluster for now offering two local engines,
+# Minikube and KinD.
 
-set -o errexit
+set -o errexit -o errtrace -o pipefail;
 
 function exit_and_inform {
 	err_n=$1
@@ -15,7 +18,7 @@ function exit_and_inform {
 			echo "Error: No git project, unable to find <docker-build-e2e.sh>." 1>&2
 			;;
 		3)
-			echo "Error: Malformatted build string." 1>&2
+			echo "Error: Malformed build string." 1>&2
 			;;
 		4)
 			print_long_help
@@ -99,9 +102,12 @@ function print_registry_host {
 
 ## KinD only.
 function create_kind_cluster_and_enable_registry {
+KIND_API_PORT=${KIND_API_PORT:-6443}
 cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerPort: ${KIND_API_PORT}
 nodes:
 - role: control-plane
   kubeadmConfigPatches:
@@ -116,9 +122,6 @@ nodes:
     protocol: TCP
   - containerPort: 443
     hostPort: 443
-    protocol: TCP
-  - containerPort: 6443
-    hostPort: 6443
     protocol: TCP
 containerdConfigPatches:
 - |-

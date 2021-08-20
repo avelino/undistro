@@ -1,0 +1,11 @@
+apiVersion: app.undistro.io/v1alpha1
+kind: Identity
+metadata:
+  name: undistro-identity
+  namespace: identity
+spec:
+  paused: false
+  oidcProvider:
+    clientId: my-nice-cliend-id
+    issuerUrl: https://my.issuer/accounts
+    usernameClaim: email

@@ -1,4 +1,12 @@
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: bootstrap-kubeadm
+  name: capi-kubeadm-bootstrap-manager
+  namespace: undistro-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -33,6 +41,18 @@ rules:
   - events
   verbs:
   - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -60,6 +80,7 @@ rules:
   - bootstrap.cluster.x-k8s.io
   resources:
   - kubeadmconfigs
+  - kubeadmconfigs/finalizers
   - kubeadmconfigs/status
   verbs:
   - create
@@ -74,41 +95,14 @@ rules:
   resources:
   - clusters
   - clusters/status
+  - machinepools
+  - machinepools/status
   - machines
   - machines/status
   verbs:
   - get
   - list
   - watch
-- apiGroups:
-  - exp.cluster.x-k8s.io
-  resources:
-  - machinepools
-  - machinepools/status
-  verbs:
-  - get
-  - list
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: bootstrap-kubeadm
-  name: capi-kubeadm-bootstrap-proxy-role
-rules:
-- apiGroups:
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups:
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -123,7 +117,7 @@ roleRef:
   name: capi-kubeadm-bootstrap-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capi-kubeadm-bootstrap-manager
   namespace: undistro-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -138,40 +132,8 @@ roleRef:
   name: capi-kubeadm-bootstrap-manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capi-kubeadm-bootstrap-manager
   namespace: undistro-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: bootstrap-kubeadm
-  name: capi-kubeadm-bootstrap-proxy-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: capi-kubeadm-bootstrap-proxy-role
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: undistro-system
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: bootstrap-kubeadm
-    control-plane: capi-bootstrap-controller-manager
-  name: capi-kubeadm-bootstrap-controller-manager-metrics-service
-  namespace: undistro-system
-spec:
-  ports:
-  - name: https
-    port: 8443
-    targetPort: https
-  selector:
-    cluster.x-k8s.io/provider: bootstrap-kubeadm
-    control-plane: capi-bootstrap-controller-manager
 ---
 apiVersion: v1
 kind: Service
@@ -192,7 +154,7 @@ kind: Deployment
 metadata:
   labels:
     cluster.x-k8s.io/provider: bootstrap-kubeadm
-    control-plane: capi-bootstrap-controller-manager
+    control-plane: controller-manager
   name: capi-kubeadm-bootstrap-controller-manager
   namespace: undistro-system
 spec:
@@ -200,86 +162,43 @@ spec:
   selector:
     matchLabels:
       cluster.x-k8s.io/provider: bootstrap-kubeadm
-      control-plane: capi-bootstrap-controller-manager
+      control-plane: controller-manager
   template:
     metadata:
       labels:
         cluster.x-k8s.io/provider: bootstrap-kubeadm
-        control-plane: capi-bootstrap-controller-manager
+        control-plane: controller-manager
     spec:
       containers:
       - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-      - args:
-        - --metrics-addr=127.0.0.1:8080
-        - --enable-leader-election
+        - --leader-elect
+        - --metrics-bind-addr=localhost:8080
         - --feature-gates=MachinePool=true
         command:
         - /manager
-        image: registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api/kubeadm-bootstrap-controller:v0.3.22
+        image: registry.undistro.io/k8s/cluster-api/kubeadm-bootstrap-controller:v0.4.1
         imagePullPolicy: IfNotPresent
-        name: manager
-      terminationGracePeriodSeconds: 10
-      tolerations:
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    cluster.x-k8s.io/provider: bootstrap-kubeadm
-    control-plane: capi-bootstrap-controller-manager
-  name: capi-kubeadm-bootstrap-controller-manager-webhook
-  namespace: undistro-system
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      cluster.x-k8s.io/provider: bootstrap-kubeadm
-      control-plane: capi-bootstrap-controller-manager
-  template:
-    metadata:
-      labels:
-        cluster.x-k8s.io/provider: bootstrap-kubeadm
-        control-plane: capi-bootstrap-controller-manager
-    spec:
-      containers:
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: registry.undistro.io/gcr/kubebuilder/kube-rbac-proxy:v0.4.1
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-      - args:
-        - --metrics-addr=127.0.0.1:8080
-        - --webhook-port=9443
-        - --feature-gates=MachinePool=true
-        command:
-        - /manager
-        image: registry.undistro.io/usgcr/k8s-artifacts-prod/cluster-api/kubeadm-bootstrap-controller:v0.3.22
-        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
         name: manager
         ports:
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+      serviceAccountName: capi-kubeadm-bootstrap-manager
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -287,7 +206,6 @@ spec:
       volumes:
       - name: cert
         secret:
-          defaultMode: 420
           secretName: capi-kubeadm-bootstrap-webhook-service-cert
 ---
 apiVersion: cert-manager.io/v1
@@ -316,22 +234,23 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: undistro-system/capi-kubeadm-bootstrap-serving-cert
-  creationTimestamp: null
   labels:
     cluster.x-k8s.io/provider: bootstrap-kubeadm
   name: capi-kubeadm-bootstrap-validating-webhook-configuration
 webhooks:
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
     service:
       name: capi-kubeadm-bootstrap-webhook-service
       namespace: undistro-system
-      path: /validate-bootstrap-cluster-x-k8s-io-v1alpha3-kubeadmconfig
+      path: /validate-bootstrap-cluster-x-k8s-io-v1alpha4-kubeadmconfig
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.kubeadmconfig.bootstrap.cluster.x-k8s.io
@@ -339,7 +258,7 @@ webhooks:
   - apiGroups:
     - bootstrap.cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE

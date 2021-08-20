@@ -1,18 +1,49 @@
-local: false
-dev: false
-prometheus:
+---
+identity:
   enabled: false
+  name: undistro-identity
+  namespace: undistro-system
+  paused: false
+  oidc:
+    federationDomain:
+      issuer: https://example.supervisor.com
+      tlsSecretName: undistro-ingress-cert
+    provider:
+      issuer:
+        name: ""
+        # optional
+        url: ""
+        # optional
+        aditionalScopes: []
+        # optional
+        tlsSecretName: ""
+      claims: {}
+  credentials:
+    clientID: some-cool-id
+    clientSecret: super-secret-client-secret
 charts: {}
+dev: false
+image:
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+global:
+  undistroVersion: v0.34.1
+  undistroRepository: registry.undistro.io/library
 ingress:
+  annotations: {}
   enabled: true
   hosts:
     - localhost
-    - ingress.local
     - undistro.local
-    - undistro.internal
+  ipAddresses:
+    - "192.168.1.3"
   tls:
+    commonName: "UnDistro Local Authority - ECC Root"
     email: undistro@getup.io
-  annotations: {}
+    secretName: undistro-ingress-cert
+local: false
+prometheus:
+  enabled: false
 resources:
   limits:
     cpu: "2"
@@ -20,9 +51,3 @@ resources:
   requests:
     cpu: "0.5"
     memory: 256Mi
-image:
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-global:
-  undistroVersion: v0.33.0
-  undistroRepository: registry.undistro.io/library

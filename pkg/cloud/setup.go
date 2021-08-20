@@ -22,7 +22,7 @@ import (
 	metadatav1alpha1 "github.com/getupio-undistro/undistro/apis/metadata/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/cloud/aws"
 	"k8s.io/apimachinery/pkg/util/json"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha3"
+	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

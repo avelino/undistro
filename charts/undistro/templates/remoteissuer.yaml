@@ -1,0 +1,20 @@
+{{- if not .Values.local -}}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  annotations:
+    helm.sh/hook: pre-install
+spec:
+  acme:
+    email: {{.Values.ingress.tls.email}}
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    server: "https://acme-v02.api.letsencrypt.org/directory"
+    solvers:
+      -
+        http01:
+          ingress:
+            class: nginx
+{{- end -}}

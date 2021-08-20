@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: identity-config
+  namespace: {{ .Values.identity.namespace }}
+  annotations:
+    helm.sh/hook: pre-install
+data:
+  federationdomain.yaml: |
+{{- toYaml .Values.identity.oidc.federationDomain | nindent 4 }}
+  oidcprovider.yaml: |
+{{- toYaml .Values.identity.oidc.provider | nindent 4 }}

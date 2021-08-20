@@ -1,4 +1,4 @@
-# 8 - Helm Release
+# 9 - Helm Release
 
 The HelmRelease object is responsible to manage [Helm Charts](https://helm.sh/) in a declarative way
 

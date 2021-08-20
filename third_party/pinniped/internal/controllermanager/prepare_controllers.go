@@ -1,0 +1,356 @@
+// Copyright 2020-2021 the Pinniped contributors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+// Package controllermanager provides an entrypoint into running all of the controllers that run as
+// a part of Pinniped.
+package controllermanager
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/clock"
+	k8sinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2/klogr"
+
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/apiserviceref"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/concierge/impersonator"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/config/concierge"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/apicerts"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/authenticator/authncache"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/authenticator/cachecleaner"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/authenticator/jwtcachefiller"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/authenticator/webhookcachefiller"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/impersonatorconfig"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controller/kubecertagent"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/controllerlib"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/deploymentref"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/downward"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/dynamiccert"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/groupsuffix"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/kubeclient"
+	pinnipedclientset "go.pinniped.dev/generated/latest/client/concierge/clientset/versioned"
+	pinnipedinformers "go.pinniped.dev/generated/latest/client/concierge/informers/externalversions"
+)
+
+const (
+	singletonWorker       = 1
+	defaultResyncInterval = 3 * time.Minute
+)
+
+// Config holds all the input parameters to the set of controllers run as a part of Pinniped.
+//
+// It is used to inject parameters into PrepareControllers.
+type Config struct {
+	// ServerInstallationInfo provides the name of the pod in which Pinniped is running and the namespace in which Pinniped is deployed.
+	ServerInstallationInfo *downward.PodInfo
+
+	// APIGroupSuffix is the suffix of the Pinniped API that should be targeted by these controllers.
+	APIGroupSuffix string
+
+	// NamesConfig comes from the Pinniped config API (see api.Config). It specifies how Kubernetes
+	// objects should be named.
+	NamesConfig *concierge.NamesConfigSpec
+
+	// KubeCertAgentConfig comes from the Pinniped config API (see api.Config). It configures how
+	// the kubecertagent package's controllers should manage the agent pods.
+	KubeCertAgentConfig *concierge.KubeCertAgentSpec
+
+	// DiscoveryURLOverride allows a caller to inject a hardcoded discovery URL into Pinniped
+	// discovery document.
+	DiscoveryURLOverride *string
+
+	// DynamicServingCertProvider provides a setter and a getter to the Pinniped API's serving cert.
+	DynamicServingCertProvider dynamiccert.Private
+
+	// DynamicSigningCertProvider provides a setter and a getter to the Pinniped API's
+	// signing cert, i.e., the cert that it uses to sign certs for Pinniped clients wishing to login.
+	// This is filled with the Kube API server's signing cert by a controller, if it can be found.
+	DynamicSigningCertProvider dynamiccert.Private
+
+	// ImpersonationSigningCertProvider provides a setter and a getter to the CA cert that should be
+	// used to sign client certs for authentication to the impersonation proxy. This CA is used by
+	// the TokenCredentialRequest to sign certs and by the impersonation proxy to check certs.
+	// When the impersonation proxy is not running, the getter will return nil cert and nil key.
+	// (Note that the impersonation proxy also accepts client certs signed by the Kube API server's cert.)
+	ImpersonationSigningCertProvider dynamiccert.Provider
+
+	// ServingCertDuration is the validity period, in seconds, of the API serving certificate.
+	ServingCertDuration time.Duration
+
+	// ServingCertRenewBefore is the period of time, in seconds, that pinniped will wait before
+	// rotating the serving certificate. This period of time starts upon issuance of the serving
+	// certificate.
+	ServingCertRenewBefore time.Duration
+
+	// AuthenticatorCache is a cache of authenticators shared amongst various authenticated-related controllers.
+	AuthenticatorCache *authncache.Cache
+
+	// Labels are labels that should be added to any resources created by the controllers.
+	Labels map[string]string
+}
+
+// Prepare the controllers and their informers and return a function that will start them when called.
+//nolint:funlen // Eh, fair, it is a really long function...but it is wiring the world...so...
+func PrepareControllers(c *Config) (func(ctx context.Context), error) {
+	loginConciergeGroupData, identityConciergeGroupData := groupsuffix.ConciergeAggregatedGroups(c.APIGroupSuffix)
+
+	dref, _, err := deploymentref.New(c.ServerInstallationInfo)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create deployment ref: %w", err)
+	}
+
+	apiServiceRef, err := apiserviceref.New(loginConciergeGroupData.APIServiceName())
+	if err != nil {
+		return nil, fmt.Errorf("cannot create API service ref: %w", err)
+	}
+
+	client, err := kubeclient.New(
+		dref,          // first try to use the deployment as an owner ref (for namespace scoped resources)
+		apiServiceRef, // fallback to our API service (for everything else we create)
+		kubeclient.WithMiddleware(groupsuffix.New(c.APIGroupSuffix)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not create clients for the controllers: %w", err)
+	}
+
+	// Create informers. Don't forget to make sure they get started in the function returned below.
+	informers := createInformers(c.ServerInstallationInfo.Namespace, client.Kubernetes, client.PinnipedConcierge)
+
+	agentConfig := kubecertagent.AgentConfig{
+		Namespace:                 c.ServerInstallationInfo.Namespace,
+		ServiceAccountName:        c.NamesConfig.AgentServiceAccount,
+		ContainerImage:            *c.KubeCertAgentConfig.Image,
+		NamePrefix:                *c.KubeCertAgentConfig.NamePrefix,
+		ContainerImagePullSecrets: c.KubeCertAgentConfig.ImagePullSecrets,
+		Labels:                    c.Labels,
+		CredentialIssuerName:      c.NamesConfig.CredentialIssuer,
+		DiscoveryURLOverride:      c.DiscoveryURLOverride,
+	}
+
+	// Create controller manager.
+	controllerManager := controllerlib.
+		NewManager().
+
+		// API certs controllers are responsible for managing the TLS certificates used to serve Pinniped's API.
+		WithController(
+			apicerts.NewCertsManagerController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ServingCertificateSecret,
+				c.Labels,
+				client.Kubernetes,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+				controllerlib.WithInitialEvent,
+				c.ServingCertDuration,
+				"Pinniped CA",
+				c.NamesConfig.APIService,
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewAPIServiceUpdaterController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ServingCertificateSecret,
+				loginConciergeGroupData.APIServiceName(),
+				client.Aggregation,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewAPIServiceUpdaterController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ServingCertificateSecret,
+				identityConciergeGroupData.APIServiceName(),
+				client.Aggregation,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewCertsObserverController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ServingCertificateSecret,
+				c.DynamicServingCertProvider,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewCertsExpirerController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ServingCertificateSecret,
+				client.Kubernetes,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+				c.ServingCertRenewBefore,
+				apicerts.TLSCertificateChainSecretKey,
+			),
+			singletonWorker,
+		).
+		// The kube-cert-agent controller is responsible for finding the cluster's signing keys and keeping them
+		// up to date in memory, as well as reporting status on this cluster integration strategy.
+		WithController(
+			kubecertagent.NewAgentController(
+				agentConfig,
+				client,
+				informers.kubeSystemNamespaceK8s.Core().V1().Pods(),
+				informers.installationNamespaceK8s.Apps().V1().Deployments(),
+				informers.installationNamespaceK8s.Core().V1().Pods(),
+				informers.kubePublicNamespaceK8s.Core().V1().ConfigMaps(),
+				informers.pinniped.Config().V1alpha1().CredentialIssuers(),
+				c.DynamicSigningCertProvider,
+			),
+			singletonWorker,
+		).
+		// The kube-cert-agent legacy pod cleaner controller is responsible for cleaning up pods that were deployed by
+		// versions of Pinniped prior to v0.7.0. If we stop supporting upgrades from v0.7.0, we can safely remove this.
+		WithController(
+			kubecertagent.NewLegacyPodCleanerController(
+				agentConfig,
+				client,
+				informers.installationNamespaceK8s.Core().V1().Pods(),
+				klogr.New(),
+			),
+			singletonWorker,
+		).
+		// The cache filler/cleaner controllers are responsible for keep an in-memory representation of active
+		// authenticators up to date.
+		WithController(
+			webhookcachefiller.New(
+				c.AuthenticatorCache,
+				informers.pinniped.Authentication().V1alpha1().WebhookAuthenticators(),
+				klogr.New(),
+			),
+			singletonWorker,
+		).
+		WithController(
+			jwtcachefiller.New(
+				c.AuthenticatorCache,
+				informers.pinniped.Authentication().V1alpha1().JWTAuthenticators(),
+				klogr.New(),
+			),
+			singletonWorker,
+		).
+		WithController(
+			cachecleaner.New(
+				c.AuthenticatorCache,
+				informers.pinniped.Authentication().V1alpha1().WebhookAuthenticators(),
+				informers.pinniped.Authentication().V1alpha1().JWTAuthenticators(),
+				klogr.New(),
+			),
+			singletonWorker,
+		).
+
+		// The impersonator configuration controller dynamically configures the impersonation proxy feature.
+		WithController(
+			impersonatorconfig.NewImpersonatorConfigController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.CredentialIssuer,
+				client.Kubernetes,
+				client.PinnipedConcierge,
+				informers.pinniped.Config().V1alpha1().CredentialIssuers(),
+				informers.installationNamespaceK8s.Core().V1().Services(),
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+				c.NamesConfig.ImpersonationLoadBalancerService,
+				c.NamesConfig.ImpersonationClusterIPService,
+				c.NamesConfig.ImpersonationTLSCertificateSecret,
+				c.NamesConfig.ImpersonationCACertificateSecret,
+				c.Labels,
+				clock.RealClock{},
+				impersonator.New,
+				c.NamesConfig.ImpersonationSignerSecret,
+				c.ImpersonationSigningCertProvider,
+				klogr.New(),
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewCertsManagerController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ImpersonationSignerSecret,
+				c.Labels,
+				client.Kubernetes,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+				controllerlib.WithInitialEvent,
+				365*24*time.Hour, // 1 year hard coded value
+				"Pinniped Impersonation Proxy CA",
+				"", // optional, means do not give me a serving cert
+			),
+			singletonWorker,
+		).
+		WithController(
+			apicerts.NewCertsExpirerController(
+				c.ServerInstallationInfo.Namespace,
+				c.NamesConfig.ImpersonationSignerSecret,
+				client.Kubernetes,
+				informers.installationNamespaceK8s.Core().V1().Secrets(),
+				controllerlib.WithInformer,
+				c.ServingCertRenewBefore,
+				apicerts.CACertificateSecretKey,
+			),
+			singletonWorker,
+		)
+
+	// Return a function which starts the informers and controllers.
+	return func(ctx context.Context) {
+		informers.startAndWaitForSync(ctx)
+		go controllerManager.Start(ctx)
+	}, nil
+}
+
+type informers struct {
+	kubePublicNamespaceK8s   k8sinformers.SharedInformerFactory
+	kubeSystemNamespaceK8s   k8sinformers.SharedInformerFactory
+	installationNamespaceK8s k8sinformers.SharedInformerFactory
+	pinniped                 pinnipedinformers.SharedInformerFactory
+}
+
+// Create the informers that will be used by the controllers.
+func createInformers(
+	serverInstallationNamespace string,
+	k8sClient kubernetes.Interface,
+	pinnipedClient pinnipedclientset.Interface,
+) *informers {
+	return &informers{
+		kubePublicNamespaceK8s: k8sinformers.NewSharedInformerFactoryWithOptions(
+			k8sClient,
+			defaultResyncInterval,
+			k8sinformers.WithNamespace(kubecertagent.ClusterInfoNamespace),
+		),
+		kubeSystemNamespaceK8s: k8sinformers.NewSharedInformerFactoryWithOptions(
+			k8sClient,
+			defaultResyncInterval,
+			k8sinformers.WithNamespace(kubecertagent.ControllerManagerNamespace),
+		),
+		installationNamespaceK8s: k8sinformers.NewSharedInformerFactoryWithOptions(
+			k8sClient,
+			defaultResyncInterval,
+			k8sinformers.WithNamespace(serverInstallationNamespace),
+		),
+		pinniped: pinnipedinformers.NewSharedInformerFactoryWithOptions(
+			pinnipedClient,
+			defaultResyncInterval,
+		),
+	}
+}
+
+func (i *informers) startAndWaitForSync(ctx context.Context) {
+	i.kubePublicNamespaceK8s.Start(ctx.Done())
+	i.kubeSystemNamespaceK8s.Start(ctx.Done())
+	i.installationNamespaceK8s.Start(ctx.Done())
+	i.pinniped.Start(ctx.Done())
+
+	i.kubePublicNamespaceK8s.WaitForCacheSync(ctx.Done())
+	i.kubeSystemNamespaceK8s.WaitForCacheSync(ctx.Done())
+	i.installationNamespaceK8s.WaitForCacheSync(ctx.Done())
+	i.pinniped.WaitForCacheSync(ctx.Done())
+}

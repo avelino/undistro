@@ -1,5 +1,5 @@
 ---
-apiVersion: cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: Cluster
 metadata:
   name: "{{.Cluster.Name}}"
@@ -31,31 +31,18 @@ spec:
   {{end}}
   {{end}}
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
-    kind: AWSManagedCluster
+    kind: AWSManagedControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
     name: "{{.Cluster.Name}}"
     namespace: "{{.Cluster.Namespace}}"
   controlPlaneRef:
     kind: AWSManagedControlPlane
-    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
     name: "{{.Cluster.Name}}"
     namespace: "{{.Cluster.Namespace}}"
 
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
-kind: AWSManagedCluster
-metadata:
-  name: "{{.Cluster.Name}}"
-  namespace: "{{.Cluster.Namespace}}"
-{{if and .Cluster.Spec.ControlPlane.Endpoint.Host .Cluster.Spec.ControlPlane.Endpoint.Port}}
-spec:
-  controlPlaneEndpoint:
-    host: {{.Cluster.Spec.ControlPlane.Endpoint.Host}}
-    port: {{.Cluster.Spec.ControlPlane.Endpoint.Port}}
-{{end}}
-
----
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
 kind: AWSManagedControlPlane
 metadata:
   name: "{{.Cluster.Name}}"
@@ -99,7 +86,7 @@ spec:
   {{end}}
   {{end}}
   {{if  .Cluster.Spec.Network}}
-  networkSpec:
+  network:
     {{if  .Cluster.Spec.Network.VPC}}
     vpc:
       {{if  .Cluster.Spec.Network.VPC.ID}}
@@ -139,7 +126,7 @@ spec:
 {{$uid := .Cluster.Status.LastUsedUID}}
 {{range $index, $element := .Cluster.Spec.Workers}}
 ---
-apiVersion: exp.cluster.x-k8s.io/v1alpha3
+apiVersion: cluster.x-k8s.io/v1alpha4
 kind: MachinePool
 metadata:
   name: "{{$name}}-mp-{{$index}}"
@@ -153,13 +140,13 @@ spec:
         dataSecretName: ""
       clusterName: {{$name}}
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: AWSManagedMachinePool
         name: "{{$name}}-mp-{{$index}}"
         namespace: "{{$namespace}}"
       version: "{{$k8s}}"
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: AWSManagedMachinePool
 metadata:
   name: "{{$name}}-mp-{{$index}}"
@@ -170,6 +157,14 @@ spec:
   labels:
     {{range $key, $value := $element.Labels}}
     {{$key}}: {{$value | quote}}
+    {{end}}
+  {{end}}
+  {{if $element.Taints}}
+  taints:
+    {{range $element.Taints}}
+    - key: {{.Key}}
+      value: {{.Value}}
+      effect: {{slugtaint .Effect}}
     {{end}}
   {{end}}
   {{if $element.ProviderTags}}

@@ -166,91 +166,103 @@ const titleNavigation = [
 		id: '#6---cluster'
 	},
 	{
-		title: 'Policies',
+		title: 'Identity',
 		number: '7',
 		subtitle: [
 			{
-				title: 'Default policies',
+				title: 'Minimal Identity Configuration',
 				number: '7.1',
+				id: '#minimal-identity-configuration'
+			},
+		],
+		id: '#7---identity'
+	},
+	{
+		title: 'Policies',
+		number: '8',
+		subtitle: [
+			{
+				title: 'Default policies',
+				number: '8.1',
 				id: '#default-policies'
 			},
 			{
 				title: 'Network policy',
-				number: '7.2',
+				number: '8.2',
 				id: '#network-policy'
 			},
 			{
 				title: 'Default policies management',
-				number: '7.3',
+				number: '8.3',
 				id: '#default-policies-management'
 			},
 			{
 				title: 'Applying customized policies',
-				number: '7.4',
+				number: '8.4',
 				id: '#applying-customized-policies'
 			}
 		],
-		id: '#7---policies'
+		id: '#8---policies'
 	},
 	{
 		title: 'Helm Release',
-		number: '8',
+		number: '9',
 		subtitle: [
 			{
 				title: 'Specification',
-				number: '8.1',
+				number: '9.1',
 				id: '#specification'
 			},
 			{
 				title: 'Create Helm release',
-				number: '8.2',
+				number: '9.2',
 				id: '#create-helm-release'
 			},
 			{
 				title: 'Delete Helm release',
-				number: '8.3',
+				number: '9.3',
 				id: '#delete-helm-release'
 			},
 			{
 				title: 'Check Helm release',
-				number: '8.4',
+				number: '9.4',
 				id: '#check-helm-release'
 			}
 		],
-		id: '#8---helm-release'
+		id: '#9---helm-release'
 	},
 	{
 		title: 'Community',
-		number: '9',
+		number: '10',
 		subtitle: [],
-		id: '#9---community'
+		id: '#10---community'
 	},
 	{
 		title: 'Glossary',
-		number: '10',
+		number: '11',
 		subtitle: [
 			{
 				title: 'Management Cluster',
-				number: '10.1',
+				number: '11.1',
 				id: '#management-cluster'
 			},
 			{
 				title: 'Provider Components',
-				number: '10.2',
+				number: '11.2',
 				id: '#provider-components'
 			},
 			{
 				title: 'Infrastructure Provider',
-				number: '10.3',
+				number: '11.3',
 				id: '#infrastructure-provider'
 			},
 			{
 				title: 'Core Provider',
-				number: '10.4',
+				number: '11.4',
 				id: '#core-provider'
 			}
 		],
-		id: '#10---glossary'
+		id: '#11---glossary'
 	},
 ]
 

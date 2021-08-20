@@ -335,6 +335,7 @@ Resources:
           - eks:DeleteNodegroup
           - eks:UpdateNodegroupConfig
           - eks:CreateNodegroup
+          - eks:AssociateEncryptionConfig
           Effect: Allow
           Resource:
           - arn:*:eks:*:*:cluster/*
