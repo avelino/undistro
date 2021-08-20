@@ -1,6 +1,3 @@
-/* eslint-disable react/display-name */
-/* eslint-disable react/no-children-prop */
-/* eslint-disable react/prop-types */
 import React from 'react'
 import './index.scss'
 import titleNavigation from 'Util/markdownNavigation'
@@ -16,6 +13,7 @@ import Policies from 'Util/docs/policies.md'
 import Helm from 'Util/docs/helm.md'
 import Community from 'Util/docs/community.md'
 import Glossary from 'Util/docs/glossary.md'
+import TagVersion from 'Components/atoms/tagVersion'
 
 export default function DocsRoute () {
 	return (
@@ -30,7 +28,9 @@ export default function DocsRoute () {
 					</div>
 				</div>
 				<div className="content">
-					<MDXProvider>
+					<MDXProvider
+						components={{ TagVersion }}
+					>
 						<Introduction />
 						<QuickStart />
 						<Install />
