@@ -55,7 +55,7 @@
 
   &.active,
   &:hover {
-    background-color: var(--primary-light, $primary-light);
+    background-color: var(--primary, $primary);
 
     &::before {
       display: none;
@@ -64,9 +64,8 @@
     p,
     i,
     svg {
-      color: var(--menu-top, $menu-top);
-      fill: var(--menu-top, $menu-top);
-      font-weight: 700;
+      color: var(--off-white, $off-white);
+      fill: var(--off-white, $off-white);
     }
   }
 }

@@ -7,6 +7,7 @@ import ClusterRoute from '@routes/cluster'
 import MenuTop from '@components/menuTopBar'
 import MenuSideBar from '@components/menuSideBar'
 import WorkerPage from '@routes/worker'
+import RbacPage from '@routes/rbacRoles'
 import { TypeSubItem, TypeItem } from './types/generic'
 import Modals from './modals'
 import 'styles/app.scss'
@@ -75,6 +76,46 @@ const Itens: TypeItem[] = [
     ),
     subItens: SubItens,
     url: '/nodepools'
+  },
+  {
+    name: 'Rbac Roles',
+    icon: (
+      <svg
+        width="24"
+        height="24"
+        style={{ height: '1.5rem', width: '1.5rem', marginBottom: '4px', marginRight: '14px', marginLeft: '10px' }}
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M10.893 22.4565V1.5435L16.959 0V24L10.893 22.4565ZM12.355 19.9775C12.355 20.7475 12.9545 21.5035 13.7175 21.6715C14.508 21.846 15.1675 21.3265 15.1675 20.5055C15.1675 19.6845 14.508 18.9165 13.7175 18.7945C12.955 18.6775 12.355 19.2075 12.355 19.9775ZM11.2245 16.2805L16.53 16.8305V14.824L11.2245 14.5035V16.2805ZM11.2245 12.527L16.53 12.5945V10.5895L11.2245 10.75V12.527ZM11.2245 8.772L16.53 8.3585V6.35L11.2245 6.993V8.772ZM11.2245 5.0165L16.53 4.1225V2.1155L11.2245 3.238V5.0165Z"
+          fill="currentColor"
+        />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M17.326 24V0L24 2.4225V21.5775L17.326 24ZM22.2215 19.6055L23.536 19.274V4.726L22.2215 4.3945V19.6055Z"
+          fill="currentColor"
+        />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M0 4.171V19.809L4.53599 20.963V3.017L0 4.171ZM2.112 19.221C1.5415 19.0955 1.093 18.53 1.093 17.9545C1.093 17.379 1.543 16.9815 2.112 17.0695C2.7035 17.162 3.2 17.7365 3.2 18.35C3.2 18.9635 2.7035 19.3525 2.112 19.222V19.221ZM4.215 15.6025L0.25 15.1925V13.862L4.215 14.1V15.6025ZM4.215 12.4345L0.25 12.384V11.054L4.21699 10.9345L4.215 12.4345ZM4.215 9.267L0.25 9.576V8.246L4.21699 7.7665L4.215 9.267ZM4.215 6.0995L0.25 6.768V5.438L4.215 4.6V6.0995Z"
+          fill="currentColor"
+        />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M4.81049 20.963V3.017L9.75549 4.8285V19.15L4.81049 20.963ZM8.47099 17.6795L9.45399 17.4295V6.553L8.47099 6.303V17.6795Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+    subItens: SubItens,
+    url: '/roles'
   }
 ]
 
@@ -90,6 +131,7 @@ export default function App() {
           <Route exact path="/controlPlane/:namespace/:clusterName" component={ControlPlanePage} />
           <Route exact path="/worker/:namespace/:clusterName" component={WorkerPage} />
           <Route exact path="/cluster/:namespace/:clusterName" component={ClusterRoute} />
+          <Route exact path="/roles" component={RbacPage} />
         </Switch>
         <Modals />
       </div>

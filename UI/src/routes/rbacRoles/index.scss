@@ -1,0 +1,30 @@
+.rbac-route {
+  margin: 44px 0 0 92px;
+  .content {
+    width: 680px;
+
+    h3 {
+      margin: 22px 0;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .input {
+      margin: 8px 0;
+    }
+
+    .rbac-select {
+      margin-bottom: 28px;
+      width: 220px;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: flex-end;
+
+      .button--black {
+        margin-right: 20px;
+      }
+    }
+  }
+}
