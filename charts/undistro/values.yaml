@@ -1,4 +1,32 @@
 ---
+charts: {}
+dev: false
+image:
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+global:
+  undistroVersion: v0.34.4
+  undistroRepository: registry.undistro.io/library
+ingress:
+  annotations: {}
+  enabled: true
+  hosts:
+    - localhost
+    - undistro.local
+  tls:
+    commonName: "UnDistro Local Authority - ECC Root"
+    email: undistro@getup.io
+    secretName: undistro-ingress-cert
+local: false
+prometheus:
+  enabled: false
+resources:
+  limits:
+    cpu: "2"
+    memory: 1024Mi
+  requests:
+    cpu: "0.5"
+    memory: 256Mi
 identity:
   enabled: false
   name: undistro-identity
@@ -21,33 +49,3 @@ identity:
   credentials:
     clientID: some-cool-id
     clientSecret: super-secret-client-secret
-charts: {}
-dev: false
-image:
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-global:
-  undistroVersion: v0.34.1
-  undistroRepository: registry.undistro.io/library
-ingress:
-  annotations: {}
-  enabled: true
-  hosts:
-    - localhost
-    - undistro.local
-  ipAddresses:
-    - "192.168.1.3"
-  tls:
-    commonName: "UnDistro Local Authority - ECC Root"
-    email: undistro@getup.io
-    secretName: undistro-ingress-cert
-local: false
-prometheus:
-  enabled: false
-resources:
-  limits:
-    cpu: "2"
-    memory: 1024Mi
-  requests:
-    cpu: "0.5"
-    memory: 256Mi

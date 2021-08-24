@@ -1,8 +1,7 @@
 # 7 - Identity
 
 ## Minimal Identity Configuration
-
-To enable Identity feature, put the following minimal configuration into your UnDistro config file
+Identity functionality is available as of release v0.34.0 as a feature flag. To enable Identity feature, put the following minimal configuration into your UnDistro config file.
 ```yaml
 undistro:
   identity:

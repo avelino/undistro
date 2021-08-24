@@ -42,10 +42,12 @@ metadata:
   namespace: undistro-system
 spec:
   commonName: {{ .Values.ingress.tls.commonName }}
+  {{with .Values.ingress.ipAddresses}}
   ipAddresses:
-    {{- range .Values.ingress.ipAddresses }}
+    {{- range . }}
     - {{ . }}
     {{- end }}
+  {{end}}
   dnsNames:
     {{- range .Values.ingress.hosts }}
     - {{ . }}

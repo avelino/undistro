@@ -54,7 +54,10 @@ func (o *KubeconfigOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args
 	if err != nil {
 		return err
 	}
-	if len(args) != 1 && o.Admin {
+	if len(args) == 0 {
+		return nil
+	}
+	if o.Admin && len(args) != 1 {
 		return errors.New("required 1 argument")
 	}
 	o.ClusterName = args[0]

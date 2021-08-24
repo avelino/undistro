@@ -2361,6 +2361,7 @@ k8s.io/component-base v0.22.0 h1:ZTmX8hUqH9T9gc0mM42O+KDgtwTYbVTt2MwmLP0eK8A=
 k8s.io/component-base v0.22.0/go.mod h1:SXj6Z+V6P6GsBhHZVbWCw9hFjUdUYnJerlhhPnYCBCg=
 k8s.io/component-helpers v0.21.0/go.mod h1:tezqefP7lxfvJyR+0a+6QtVrkZ/wIkyMLK4WcQ3Cj8U=
 k8s.io/component-helpers v0.21.2/go.mod h1:DbyFt/A0p6Cv+R5+QOGSJ5f5t4xDfI8Yb89a57DgJlQ=
+k8s.io/component-helpers v0.22.0 h1:OoTOtxTkg/T16FRS1K/WfABzxliTCq3RTbFHMBSod/o=
 k8s.io/component-helpers v0.22.0/go.mod h1:YNIbQI59ayNiU8JHlPIxVkOUYycbKhk5Niy0pcyJOEY=
 k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
 k8s.io/gengo v0.0.0-20190822140433-26a664648505/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
