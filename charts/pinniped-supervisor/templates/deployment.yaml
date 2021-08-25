@@ -46,10 +46,12 @@ spec:
       serviceAccountName: pinniped-supervisor
       containers:
       - name: pinniped-supervisor
-        image: registry.undistro.io/dockerhub/getpinniped/pinniped-server:v0.10.0
-        imagePullPolicy: IfNotPresent
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
         - /usr/local/bin/pinniped-supervisor
+        env:
+        - UNDISTRO_UI_CALLBACK_URL: {{ .Values.config.callbackURL }}
         args:
         - /etc/podinfo
         - /etc/config/pinniped.yaml
