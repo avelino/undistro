@@ -5,7 +5,7 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 global:
-  undistroVersion: v0.34.4
+  undistroVersion: v0.34.5
   undistroRepository: registry.undistro.io/library
 ingress:
   annotations: {}
@@ -46,6 +46,6 @@ identity:
         # optional
         tlsSecretName: ""
       claims: {}
-  credentials:
-    clientID: some-cool-id
-    clientSecret: super-secret-client-secret
+    credentials:
+      clientID: some-cool-id
+      clientSecret: super-secret-client-secret
