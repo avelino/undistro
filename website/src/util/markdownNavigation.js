@@ -139,7 +139,7 @@ const titleNavigation = [
 			},
 			{
 				title: 'Get cluster kubeconfig',
-				number: '7.5',
+				number: '6.5',
 				id: '#get-cluster-kubeconfig'
 			},
 			{
@@ -170,9 +170,31 @@ const titleNavigation = [
 		number: '7',
 		subtitle: [
 			{
-				title: 'Minimal Identity Configuration',
+				title: 'Overview',
 				number: '7.1',
+				id: '#overview'
+			},
+			{
+				title: 'Minimal Identity Configuration',
+				number: '7.2',
 				id: '#minimal-identity-configuration'
+			},
+			{
+				title: 'Authenticating via CLI',
+				number: '7.3',
+				id: '#authenticating-via-cli',
+				subtitle: [
+					{
+						title: 'Adding an user cluster permission',
+						number: '7.3.1',
+						id: '#adding-an-user-cluster-permission'
+					}
+				]
+			},
+			{
+				title: 'Authenticating via Web UI (Comming soon)',
+				number: '7.4',
+				id: '#authenticating-via-web-ui'
 			},
 		],
 		id: '#7---identity'

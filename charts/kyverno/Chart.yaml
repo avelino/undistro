@@ -1,7 +1,7 @@
 apiVersion: v1
 name: kyverno
-version: 1.4.1
-appVersion: v1.4.1
+version: 1.4.2
+appVersion: v1.4.2
 icon: https://github.com/kyverno/kyverno/raw/main/img/logo.png
 description: Kubernetes Native Policy Management
 keywords:
@@ -14,7 +14,7 @@ home: https://kyverno.io/
 sources:
   - https://github.com/kyverno/kyverno
 maintainers:
-  - name: Nirmata
+  - name: getupio-undistro
     url: https://kyverno.io/
 engine: gotpl
 kubeVersion: ">=1.10.0-0"

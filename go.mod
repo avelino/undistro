@@ -44,7 +44,7 @@ require (
 	k8s.io/kubectl v0.22.0
 	k8s.io/utils v0.0.0-20210802155522-efc7438f0176
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/cluster-api v0.4.1
+	sigs.k8s.io/cluster-api v0.4.2
 	sigs.k8s.io/cluster-api/test/framework v0.0.0-20200304170348-97097699f713
 	sigs.k8s.io/controller-runtime v0.9.6
 	sigs.k8s.io/yaml v1.2.0

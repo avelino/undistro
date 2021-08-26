@@ -15,9 +15,16 @@ spec:
   chart:
     repository: "https://registry.undistro.io/chartrepo/library"
     name: kyverno
-    version: 1.4.1
+    version: 1.4.2
   values:
-    infraNode: "{{.Cluster.HasInfraNodes}}"
+    {{if .Cluster.HasInfraNodes}}
+    nodeSelector:
+      node-role.undistro.io/infra: 'true'
+    tolerations:
+      - effect: 'NoSchedule'          
+        key: 'dedicated'              
+        value: 'infra'   
+    {{end}}
     fullnameOverride: kyverno
     namespace: kyverno
     resources:                 

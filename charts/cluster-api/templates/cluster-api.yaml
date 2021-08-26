@@ -358,7 +358,7 @@ spec:
         - --feature-gates=MachinePool=true,ClusterResourceSet=true,ClusterTopology=false
         command:
         - /manager
-        image: registry.undistro.io/k8s/cluster-api/cluster-api-controller:v0.4.1
+        image: registry.undistro.io/k8s/cluster-api/cluster-api-controller:v0.4.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

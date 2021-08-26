@@ -46,6 +46,6 @@ identity:
         # optional
         tlsSecretName: ""
       claims: {}
-  credentials:
-    clientID: some-cool-id
-    clientSecret: super-secret-client-secret
+    credentials:
+      clientID: some-cool-id
+      clientSecret: super-secret-client-secret
