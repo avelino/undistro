@@ -2,7 +2,7 @@
 image:
   pullPolicy: IfNotPresent
   repository: registry.undistro.io/library/pinniped-server
-  tag: v0.10.1-beta
+  tag: v0.10.0-undistro
 metadata:
   labels:
     app: pinniped-supervisor

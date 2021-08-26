@@ -164,7 +164,7 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		values["config"] = map[string]interface{}{
 			"callbackURL": issuer + "/callback",
 		}
-		err = r.reconcileComponentInstallation(ctx, req, cl, i, supervisor, undistro.Namespace, "0.10.1-beta", values)
+		err = r.reconcileComponentInstallation(ctx, req, cl, i, supervisor, undistro.Namespace, "0.10.0-undistro", values)
 		if err != nil {
 			r.Log.Info(err.Error())
 			return err
