@@ -1,0 +1,445 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-system
+  namespace: undistro-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-manager
+  namespace: capo-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-leader-election-role
+  namespace: capo-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - clusters/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machines
+  - machines/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - openstackclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - openstackclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - openstackmachines
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - openstackmachines/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-leader-election-rolebinding
+  namespace: capo-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: capo-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: capo-manager
+  namespace: capo-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: capo-manager-role
+subjects:
+- kind: ServiceAccount
+  name: capo-manager
+  namespace: capo-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-webhook-service
+  namespace: capo-system
+spec:
+  ports:
+  - port: 443
+    targetPort: webhook-server
+  selector:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+    control-plane: capo-controller-manager
+  name: capo-controller-manager
+  namespace: capo-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/provider: infrastructure-openstack
+      control-plane: capo-controller-manager
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/provider: infrastructure-openstack
+        control-plane: capo-controller-manager
+    spec:
+      containers:
+      - args:
+        - --leader-elect
+        - --v=2
+        command:
+        - /manager
+        image: gcr.io/k8s-staging-capi-openstack/capi-openstack-controller:nightly_master_20210809
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      serviceAccountName: capo-manager
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: capo-webhook-service-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-serving-cert
+  namespace: capo-system
+spec:
+  dnsNames:
+  - capo-webhook-service.capo-system.svc
+  - capo-webhook-service.capo-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: capo-selfsigned-issuer
+  secretName: capo-webhook-service-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-selfsigned-issuer
+  namespace: capo-system
+spec:
+  selfSigned: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: capo-system/capo-serving-cert
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackcluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.openstackcluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackcluster
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.openstackclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackmachine
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.openstackmachine.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackmachines
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: capo-system/capo-serving-cert
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-openstack
+  name: capo-validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackcluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.openstackcluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackcluster
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.openstackclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackmachine
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.openstackmachine.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackmachines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: capo-webhook-service
+      namespace: capo-system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-openstackmachinetemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.openstackmachinetemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - openstackmachinetemplates
+  sideEffects: None
