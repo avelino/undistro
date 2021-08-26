@@ -62,7 +62,7 @@ spec:
       serviceAccountName: pinniped-concierge
       containers:
       - name: pinniped-concierge
-        image: registry.undistro.io/dockerhub/getpinniped/pinniped-server:v0.10.0
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -71,6 +71,8 @@ spec:
           limits:
             cpu: 100m
             memory: 128Mi
+        command:
+        - /usr/local/bin/pinniped-concierge
         args:
         - --config=/etc/config/pinniped.yaml
         - --downward-api-path=/etc/podinfo

@@ -128,7 +128,7 @@ func SetupPinnipedCommand(cmd *cobra.Command) (*cobra.Command, GetKubeconfigPara
 	f.Var(&flags.concierge.mode, "concierge-mode", "Concierge mode of operation")
 
 	f.StringVar(&flags.oidc.issuer, "oidc-issuer", "", "OpenID Connect issuer URL (default: autodiscover)")
-	f.StringVar(&flags.oidc.clientID, "oidc-client-id", "pinniped-cli", "OpenID Connect client ID (default: autodiscover)")
+	f.StringVar(&flags.oidc.clientID, "oidc-client-id", "undistro-cli", "OpenID Connect client ID (default: autodiscover)")
 	f.Uint16Var(&flags.oidc.listenPort, "oidc-listen-port", 0, "TCP port for localhost listener (authorization code flow only)")
 	f.StringSliceVar(&flags.oidc.scopes, "oidc-scopes", []string{oidc.ScopeOfflineAccess, oidc.ScopeOpenID, "pinniped:request-audience"}, "OpenID Connect scopes to request during login")
 	f.BoolVar(&flags.oidc.skipBrowser, "oidc-skip-browser", false, "During OpenID Connect login, skip opening the browser (just print the URL)")

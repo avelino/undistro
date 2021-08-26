@@ -142,7 +142,7 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		},
 	}
 
-	err = r.reconcileComponentInstallation(ctx, req, cl, i, concierge, undistro.Namespace, values)
+	err = r.reconcileComponentInstallation(ctx, req, cl, i, concierge, undistro.Namespace, "0.10.0", values)
 	if err != nil {
 		r.Log.Info(err.Error())
 		return err
@@ -164,7 +164,7 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		values["config"] = map[string]interface{}{
 			"callbackURL": issuer + "/callback",
 		}
-		err = r.reconcileComponentInstallation(ctx, req, cl, i, supervisor, undistro.Namespace, values)
+		err = r.reconcileComponentInstallation(ctx, req, cl, i, supervisor, undistro.Namespace, "0.10.1-beta", values)
 		if err != nil {
 			r.Log.Info(err.Error())
 			return err
@@ -334,7 +334,7 @@ func (r *IdentityReconciler) reconcileComponentInstallation(
 	cl *appv1alpha1.Cluster,
 	i appv1alpha1.Identity,
 	pc PinnipedComponent,
-	targetNs string,
+	targetNs, version string,
 	values map[string]interface{},
 ) (err error) {
 	release := appv1alpha1.HelmRelease{}
@@ -346,7 +346,7 @@ func (r *IdentityReconciler) reconcileComponentInstallation(
 			return err
 		}
 
-		release, err = prepareHR(pc, targetNs, cl.GetNamespace(), "0.10.1-beta", i, values)
+		release, err = prepareHR(pc, targetNs, cl.GetNamespace(), version, i, values)
 		if err != nil {
 			return err
 		}
