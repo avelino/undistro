@@ -8,4 +8,4 @@ maintainers:
     url: https://undistro.io/
 name: pinniped-supervisor
 type: application
-version: v0.10.0-undistro
+version: 0.10.0-undistro
