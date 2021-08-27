@@ -51,7 +51,8 @@ spec:
         command:
         - /usr/local/bin/pinniped-supervisor
         env:
-        - UNDISTRO_UI_CALLBACK_URL: {{ .Values.config.callbackURL }}
+        - name: UNDISTRO_UI_CALLBACK_URL
+          value: {{ .Values.config.callbackURL }}
         args:
         - /etc/podinfo
         - /etc/config/pinniped.yaml
@@ -72,7 +73,6 @@ spec:
           protocol: TCP
         - containerPort: 8443
           protocol: TCP
-        env: []
         livenessProbe:
           httpGet:
             path: /healthz
