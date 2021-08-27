@@ -7,6 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/aws/aws-sdk-go v1.40.13
+	github.com/caarlos0/httperr v1.1.0
 	github.com/coreos/go-oidc/v3 v3.0.0
 	github.com/go-ldap/ldap/v3 v3.3.0
 	github.com/go-logr/logr v0.4.0

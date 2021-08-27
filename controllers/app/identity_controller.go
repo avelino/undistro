@@ -24,12 +24,17 @@ import (
 	"strings"
 	"time"
 
+	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
+	"github.com/getupio-undistro/undistro/pkg/kube"
+	"github.com/getupio-undistro/undistro/pkg/meta"
+	"github.com/getupio-undistro/undistro/pkg/retry"
+	"github.com/getupio-undistro/undistro/pkg/undistro"
+	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	conciergev1aplha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
 	supervisorconfigv1aplha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisoridpv1aplha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,14 +43,6 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
-
-	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
-	"github.com/getupio-undistro/undistro/pkg/kube"
-	"github.com/getupio-undistro/undistro/pkg/meta"
-	"github.com/getupio-undistro/undistro/pkg/retry"
-	"github.com/getupio-undistro/undistro/pkg/undistro"
-	"github.com/getupio-undistro/undistro/pkg/util"
 )
 
 const (
@@ -148,7 +145,7 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		return err
 	}
 	fedo := make(map[string]interface{})
-	o, err := getFromConfigMap(
+	o, err := util.GetFromConfigMap(
 		ctx, clusterClient, "identity-config", undistro.Namespace, "federationdomain.yaml", fedo)
 	fedo = o.(map[string]interface{})
 	if err != nil {
@@ -231,10 +228,10 @@ func (r *IdentityReconciler) reconcileFederationDomain(ctx context.Context, fede
 }
 
 func (r *IdentityReconciler) reconcileOIDCProvider(ctx context.Context) error {
-	r.Log.Info("Reconciling OIDC Provider")
+	r.Log.Info("Reconciling OIDC provider")
 	// get oidc related configmap
 	tmp := make(map[string]interface{})
-	o, err := getFromConfigMap(
+	o, err := util.GetFromConfigMap(
 		ctx, r.Client, "identity-config", undistro.Namespace, "oidcprovider.yaml", tmp)
 	if err != nil {
 		r.Log.Info(err.Error())
@@ -357,28 +354,6 @@ func (r *IdentityReconciler) reconcileComponentInstallation(
 		}
 	}
 	return
-}
-
-func getFromConfigMap(ctx context.Context, c client.Client, name, ns, dataField string, o interface{}) (interface{}, error) {
-	// retrieve the config map for update
-	cmKey := client.ObjectKey{
-		Name:      name,
-		Namespace: ns,
-	}
-	cm := corev1.ConfigMap{}
-	err := c.Get(ctx, cmKey, &cm)
-	if err != nil {
-		return o, err
-	}
-	// convert data for more simply manipulation
-	f := cm.Data[dataField]
-	fede := strings.ReplaceAll(f, "|", "")
-	byt := []byte(fede)
-	err = yaml.Unmarshal(byt, &o)
-	if err != nil {
-		return o, err
-	}
-	return o, nil
 }
 
 // installComponent installs some chart in a such cluster

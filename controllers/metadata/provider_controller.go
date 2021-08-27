@@ -43,7 +43,7 @@ import (
 
 var baseURL = "https://undistro.io/resources/metadata"
 
-// ProviderReconciler reconciles a Provider object
+// ProviderReconciler reconciles a provider object
 type ProviderReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme

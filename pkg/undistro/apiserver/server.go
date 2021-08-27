@@ -17,6 +17,7 @@ package apiserver
 
 import (
 	"context"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/callback"
 	"io"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/caarlos0/httperr"
 	"github.com/getupio-undistro/undistro/pkg/fs"
 	"github.com/getupio-undistro/undistro/pkg/undistro/apiserver/health"
 	"github.com/getupio-undistro/undistro/pkg/undistro/apiserver/proxy"
@@ -66,9 +68,12 @@ func NewServer(cfg *rest.Config, in io.Reader, out, errOut io.Writer, healthChec
 
 func (s *Server) routes(router *mux.Router) {
 	proxyHandler := proxy.NewHandler(s.K8sCfg)
+	handlerState := callback.SetRestConfHandlerState(s.K8sCfg)
+	callbackHandler := httperr.NewF(handlerState.HandleAuthCodeCallback)
 
 	router.Handle("/healthz/readiness", &s.HealthHandler)
 	router.HandleFunc("/healthz/liveness", health.HandleLive)
+	router.Handle("/callback", callbackHandler)
 	router.PathPrefix("/uapi/v1/namespaces/{namespace}/clusters/{cluster}/proxy/").Handler(proxyHandler)
 	router.PathPrefix("/").Handler(fs.ReactHandler("", "frontend"))
 }

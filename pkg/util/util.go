@@ -307,3 +307,25 @@ func GetCaFromSecret(ctx context.Context, c client.Client, secretName, dataField
 func IsMgmtCluster(clusterName string) bool {
 	return clusterName == ""
 }
+
+func GetFromConfigMap(ctx context.Context, c client.Client, name, ns, dataField string, o interface{}) (interface{}, error) {
+	// retrieve the config map for update
+	cmKey := client.ObjectKey{
+		Name:      name,
+		Namespace: ns,
+	}
+	cm := corev1.ConfigMap{}
+	err := c.Get(ctx, cmKey, &cm)
+	if err != nil {
+		return o, err
+	}
+	// convert data for more simply manipulation
+	f := cm.Data[dataField]
+	fede := strings.ReplaceAll(f, "|", "")
+	byt := []byte(fede)
+	err = yaml.Unmarshal(byt, &o)
+	if err != nil {
+		return o, err
+	}
+	return o, nil
+}
