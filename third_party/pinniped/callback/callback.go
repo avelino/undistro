@@ -39,12 +39,12 @@ type HandlerState struct {
 	provider     *oidc.Provider
 	OAuth2Config *oauth2.Config
 	UseFormPost  bool
-	RestConf *rest.Config
+	RestConf     *rest.Config
 }
 
 func SetRestConfHandlerState(r *rest.Config) *HandlerState {
 	return &HandlerState{
-		RestConf:     r,
+		RestConf: r,
 	}
 }
 
@@ -144,7 +144,7 @@ func (h *HandlerState) updateCallbackHandlerState(ctx context.Context) (*Handler
 		certPool.AppendCertsFromPEM(byt)
 
 		tlsConfig := &tls.Config{
-			RootCAs:      certPool,
+			RootCAs: certPool,
 		}
 		transport := &http.Transport{TLSClientConfig: tlsConfig}
 		cli = &http.Client{Transport: transport}
