@@ -489,7 +489,7 @@ func validateKindConfig(ctx context.Context, c client.Client, out io.Writer) err
 	}
 
 	cmd = exec.Command(
-		"undistro",
+		"kubectl",
 		"-n", "undistro-system",
 		"rollout", "restart", "deployment", "metallb-controller",
 	)
