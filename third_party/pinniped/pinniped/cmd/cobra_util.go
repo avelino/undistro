@@ -22,9 +22,3 @@ func mustMarkHidden(cmd *cobra.Command, flags ...string) {
 		}
 	}
 }
-
-func mustMarkDeprecated(cmd *cobra.Command, flag, usageMessage string) {
-	if err := cmd.Flags().MarkDeprecated(flag, usageMessage); err != nil {
-		panic(err)
-	}
-}
