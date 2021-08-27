@@ -21,7 +21,6 @@ data:
       defaultTLSCertificateSecret: pinniped-supervisor-default-tls-certificate
     labels: {"app":"pinniped-supervisor"}
     logLevel: debug
-
 ---
 apiVersion: apps/v1
 kind: Deployment

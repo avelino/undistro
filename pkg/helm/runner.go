@@ -89,6 +89,7 @@ func (r *Runner) Upgrade(hr appv1alpha1.HelmRelease, chart *chart.Chart, values 
 	upgrade.Timeout = hr.Spec.Timeout.Duration
 	upgrade.Wait = *hr.Spec.Wait
 	upgrade.Force = *hr.Spec.ForceUpgrade
+	upgrade.Recreate = true
 	upgrade.CleanupOnFail = true
 	upgrade.Devel = true
 	upgrade.Install = true

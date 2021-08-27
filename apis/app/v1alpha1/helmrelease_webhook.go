@@ -88,7 +88,7 @@ func (r *HelmRelease) Default() {
 		r.Spec.Wait = &wait
 	}
 	if r.Spec.ResetValues == nil {
-		reset := false
+		reset := true
 		r.Spec.ResetValues = &reset
 	}
 	if r.Spec.MaxHistory == nil {
