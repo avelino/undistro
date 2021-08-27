@@ -27,6 +27,7 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/meta"
 	"github.com/getupio-undistro/undistro/pkg/template"
+	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -153,7 +154,7 @@ func (r *DefaultPoliciesReconciler) reconcile(ctx context.Context, log logr.Logg
 			return appv1alpha1.DefaultPoliciesNotReady(p, meta.ObjectsApliedFailedReason, err.Error()), ctrl.Result{}, err
 		}
 	}
-	if !meta.InReadyCondition(cl.Status.Conditions) {
+	if !meta.InReadyCondition(cl.Status.Conditions) && cl.Name != "management" && cl.Namespace != undistro.Namespace {
 		return appv1alpha1.DefaultPoliciesNotReady(p, meta.WaitProvisionReason, "wait cluster to be ready"), ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 	if !meta.InReadyCondition(hr.Status.Conditions) {
@@ -213,7 +214,7 @@ func (r *DefaultPoliciesReconciler) applyPolicies(ctx context.Context, log logr.
 			}
 			_, err = util.CreateOrUpdate(ctx, clusterClient, &o)
 			if err != nil {
-				log.Info("failed to apply policy")
+				log.Info("failed to apply policy", "name", o.GetName(), "err", err)
 				return p, err
 			}
 			p.Status.AppliedPolicies = append(p.Status.AppliedPolicies, o.GetName())

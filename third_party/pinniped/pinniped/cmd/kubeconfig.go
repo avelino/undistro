@@ -79,6 +79,7 @@ type getKubeconfigConciergeParams struct {
 
 type GetKubeconfigParams struct {
 	kubeconfigPath            string
+	KubeconfigBytes           []byte
 	kubeconfigContextOverride string
 	skipValidate              bool
 	timeout                   time.Duration
@@ -157,13 +158,19 @@ func SetupPinnipedCommand(cmd *cobra.Command) (*cobra.Command, GetKubeconfigPara
 func RunGetKubeconfig(ctx context.Context, out io.Writer, deps KubeconfigDeps, flags GetKubeconfigParams) error {
 	ctx, cancel := context.WithTimeout(ctx, flags.timeout)
 	defer cancel()
-
+	var err error
 	// Validate api group suffix and immediately return an error if it is invalid.
 	if err := groupsuffix.Validate(flags.concierge.apiGroupSuffix); err != nil {
 		return fmt.Errorf("invalid API group suffix: %w", err)
 	}
 
 	clientConfig := newClientConfig(flags.kubeconfigPath, flags.kubeconfigContextOverride)
+	if flags.KubeconfigBytes != nil {
+		clientConfig, err = clientcmd.NewClientConfigFromBytes(flags.KubeconfigBytes)
+		if err != nil {
+			return fmt.Errorf("could not load kubeconfig from bytes: %w", err)
+		}
+	}
 	currentKubeConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		return fmt.Errorf("could not load --kubeconfig: %w", err)
