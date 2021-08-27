@@ -27,6 +27,7 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/meta"
 	"github.com/getupio-undistro/undistro/pkg/template"
+	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -153,7 +154,7 @@ func (r *DefaultPoliciesReconciler) reconcile(ctx context.Context, log logr.Logg
 			return appv1alpha1.DefaultPoliciesNotReady(p, meta.ObjectsApliedFailedReason, err.Error()), ctrl.Result{}, err
 		}
 	}
-	if !meta.InReadyCondition(cl.Status.Conditions) && cl.Name != "management" && cl.Namespace != "undistro-system" {
+	if !meta.InReadyCondition(cl.Status.Conditions) && cl.Name != "management" && cl.Namespace != undistro.Namespace {
 		return appv1alpha1.DefaultPoliciesNotReady(p, meta.WaitProvisionReason, "wait cluster to be ready"), ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 	if !meta.InReadyCondition(hr.Status.Conditions) {
