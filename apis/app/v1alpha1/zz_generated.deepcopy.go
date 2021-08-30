@@ -433,6 +433,11 @@ func (in *HelmReleaseSpec) DeepCopyInto(out *HelmReleaseSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ReuseValues != nil {
+		in, out := &in.ReuseValues, &out.ReuseValues
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Wait != nil {
 		in, out := &in.Wait, &out.Wait
 		*out = new(bool)

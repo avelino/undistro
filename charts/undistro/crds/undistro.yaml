@@ -1102,7 +1102,10 @@ spec:
                 releaseName:
                   type: string
                 resetValues:
-                  description: ResetValues will mark this Helm release to reset the values to the defaults of the targeted chart before performing an upgrade. Not explicitly setting this to `false` equals to `true` due to the declarative nature of the operator.
+                  description: ResetValues will mark this Helm release to reset the values to the defaults of the targeted chart before performing an upgrade.
+                  type: boolean
+                reuseValues:
+                  description: ReuseValues will mark this Helm release to reuse the values to the old release of the targeted chart before performing an upgrade.
                   type: boolean
                 rollback:
                   description: The rollback settings for this Helm release.

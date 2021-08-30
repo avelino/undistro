@@ -1,0 +1,32 @@
+---
+apiVersion: app.undistro.io/v1alpha1
+kind: HelmRelease
+metadata:
+    name: kubernetes-dashboard
+    namespace: undistro-system
+spec:
+  targetNamespace: k8s-dash
+  chart:
+    repository: https://kubernetes.github.io/dashboard
+    name: kubernetes-dashboard
+    version: 5.0.0
+  autoUpgrade: true
+  afterApplyObjects:
+    -
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: dashboard-access
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+      subjects:
+        - kind: ServiceAccount
+          name: undistro-quickstart-dash
+          namespace: k8s-dash 
+  values:
+    ingress:
+      enabled: true
+    serviceAccount:
+      name: undistro-quickstart-dash

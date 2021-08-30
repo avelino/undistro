@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/time"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +51,7 @@ func NewRunner(getter genericclioptions.RESTClientGetter, storageNamespace strin
 	if err := cfg.Init(getter, storageNamespace, "secret", debugLogger(logger)); err != nil {
 		return nil, err
 	}
+	action.Timestamper = time.Now().UTC
 	cf, err := getter.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -84,7 +86,7 @@ func (r *Runner) Upgrade(hr appv1alpha1.HelmRelease, chart *chart.Chart, values 
 	upgrade := action.NewUpgrade(r.config)
 	upgrade.Namespace = hr.Spec.TargetNamespace
 	upgrade.ResetValues = *hr.Spec.ResetValues
-	upgrade.ReuseValues = !*hr.Spec.ResetValues
+	upgrade.ReuseValues = *hr.Spec.ReuseValues
 	upgrade.MaxHistory = *hr.Spec.MaxHistory
 	upgrade.Timeout = hr.Spec.Timeout.Duration
 	upgrade.Wait = *hr.Spec.Wait
