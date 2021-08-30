@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -158,8 +159,10 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		r.Log.Info("Installing components in management cluster")
 		cl.Name = "management"
 		cl.Namespace = undistro.Namespace
+		// regex to get ip or dns names
+		callbackURL := fmt.Sprintf("https://%s/callback", findIP(issuer))
 		values["config"] = map[string]interface{}{
-			"callbackURL": issuer + "/callback",
+			"callbackURL": callbackURL,
 		}
 		err = r.reconcileComponentInstallation(ctx, req, cl, i, supervisor, undistro.Namespace, "0.10.0-undistro", values)
 		if err != nil {
@@ -191,6 +194,14 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		return err
 	}
 	return err
+}
+
+func findIP(input string) string {
+	numBlock := "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+	regexPattern := numBlock + "\\." + numBlock + "\\." + numBlock + "\\." + numBlock
+
+	regEx := regexp.MustCompile(regexPattern)
+	return regEx.FindString(input)
 }
 
 func (r *IdentityReconciler) reconcileFederationDomain(ctx context.Context, federationDomainCfg map[string]interface{}) error {

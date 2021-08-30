@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"go.pinniped.dev/pkg/oidcclient/pkce"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/upstreamoidc"
 	"net/http"
 	"net/url"
 
@@ -15,8 +15,12 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/httputil/httperr"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/oidc/provider"
 	"github.com/go-logr/logr"
 	"github.com/ory/fosite"
+	"go.pinniped.dev/pkg/oidcclient/nonce"
+	"go.pinniped.dev/pkg/oidcclient/oidctypes"
+	"go.pinniped.dev/pkg/oidcclient/pkce"
 	"go.pinniped.dev/pkg/oidcclient/state"
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/rest"
@@ -38,6 +42,13 @@ type HandlerState struct {
 	HTTPClient *http.Client
 	State      state.State
 	PKCE       pkce.Code
+	Nonce      nonce.Nonce
+
+	getProvider func(*oauth2.Config, *oidc.Provider, *http.Client) provider.UpstreamOIDCIdentityProviderI
+	// External calls for things.
+	generateState func() (state.State, error)
+	generatePKCE  func() (pkce.Code, error)
+	generateNonce func() (nonce.Nonce, error)
 
 	// Generated parameters of a login flow.
 	provider     *oidc.Provider
@@ -57,10 +68,6 @@ func (h *HandlerState) HandleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	// Perform OIDC discovery.
 	if err := h.initOIDCDiscovery(); err != nil {
 		return err
-	}
-	h, err := h.updateCallbackHandlerState(r.Context())
-	if err != nil {
-		return httperr.Newf(http.StatusInternalServerError, "error setting up callback handler state %s", err.Error())
 	}
 	return h.handleAuthCodeCallback(w, r)
 }
@@ -88,35 +95,31 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 		params = r.URL.Query()
 	}
 
-	// Validate OAuth2 state and fail if it's incorrect (to block CSRF).
-	if err := h.State.Validate(params.Get("state")); err != nil {
-		msg := fmt.Sprintf("missing or invalid state parameter: %s", err)
-		return httperr.New(http.StatusForbidden, msg)
-	}
-
-	// Check for error response parameters. See https://openid.net/specs/openid-connect-core-1_0.html#AuthError.
-	if errorParam := params.Get("error"); errorParam != "" {
-		if errorDescParam := params.Get("error_description"); errorDescParam != "" {
-			return httperr.Newf(http.StatusBadRequest, "login failed with code %q: %s", errorParam, errorDescParam)
-		}
-		return httperr.Newf(http.StatusBadRequest, "login failed with code %q", errorParam)
-	}
+	//// Validate OAuth2 state and fail if it's incorrect (to block CSRF).
+	//if err := h.State.Validate(params.Get("state")); err != nil {
+	//	msg := fmt.Sprintf("missing or invalid state parameter: %s", err)
+	//	return httperr.New(http.StatusForbidden, msg)
+	//}
+	//
+	//// Check for error response parameters. See https://openid.net/specs/openid-connect-core-1_0.html#AuthError.
+	//if errorParam := params.Get("error"); errorParam != "" {
+	//	if errorDescParam := params.Get("error_description"); errorDescParam != "" {
+	//		return httperr.Newf(http.StatusBadRequest, "login failed with code %q: %s", errorParam, errorDescParam)
+	//	}
+	//	return httperr.Newf(http.StatusBadRequest, "login failed with code %q", errorParam)
+	//}
 
 	// Exchange the authorization code for access, ID, and refresh tokens and perform required
 	// validations on the returned ID token.
 	if h.OAuth2Config == nil {
 		return httperr.Newf(http.StatusInternalServerError, "OAuth2 Config is not set")
 	}
-	token, err := h.OAuth2Config.Exchange(r.Context(), params.Get("code"))
+	token, err := h.redeemAuthCode(r.Context(), params.Get("code"))
 	if err != nil {
 		return httperr.Wrap(http.StatusBadRequest, "could not complete code exchange", err)
 	}
-	idToken := token.Extra("id_token")
-
 	resp := make(map[string]interface{})
 	resp["token"] = token
-	resp["id_token"] = idToken
-
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(resp)
 	if err != nil {
@@ -125,32 +128,32 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	return nil
 }
 
-func (h *HandlerState) updateCallbackHandlerState(ctx context.Context) (*HandlerState, error) {
+func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 	fedo := make(map[string]interface{})
 	c, err := client.New(h.RestConf, client.Options{
 		Scheme: scheme.Scheme,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	o, err := util.GetFromConfigMap(
 		ctx, c, "identity-config", undistro.Namespace, "federationdomain.yaml", fedo)
 	fedo = o.(map[string]interface{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	issuer := fedo["issuer"].(string)
 	cli := http.DefaultClient
 	isLocal, err := util.IsLocalCluster(ctx, c)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if isLocal {
 		const caSecretName = "ca-secret"
 		const caName = "ca.crt"
 		byt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		certPool := x509.NewCertPool()
 		certPool.AppendCertsFromPEM(byt)
@@ -162,23 +165,22 @@ func (h *HandlerState) updateCallbackHandlerState(ctx context.Context) (*Handler
 		cli = &http.Client{Transport: transport}
 		h.Ctx = context.WithValue(ctx, oauth2.HTTPClient, h.HTTPClient)
 	}
-	handlerState := &HandlerState{
-		Ctx:      h.Ctx,
-		Logger:   ctrl.Log,
-		Issuer:   issuer,
-		ClientID: "undistro-ui",
-		Scopes: fosite.Arguments{
-			oidc.ScopeOpenID,
-			oidc.ScopeOfflineAccess,
-			"profile",
-			"email",
-			"pinniped:request-audience",
-		},
-		HTTPClient: cli,
+	h.Logger = ctrl.Log
+	h.Issuer = issuer
+	h.ClientID = "undistro-ui"
+	h.Scopes = fosite.Arguments{
+		oidc.ScopeOpenID,
+		oidc.ScopeOfflineAccess,
+		"profile",
+		"email",
+		"pinniped:request-audience",
 	}
-	handlerState.RestConf = h.RestConf
-
-	return handlerState, nil
+	h.HTTPClient = cli
+	h.generateNonce = nonce.Generate
+	h.generateState = state.Generate
+	h.generatePKCE = pkce.Generate
+	h.getProvider = upstreamoidc.New
+	return nil
 }
 
 func (h *HandlerState) initOIDCDiscovery() error {
@@ -210,6 +212,17 @@ func (h *HandlerState) initOIDCDiscovery() error {
 	}
 	h.UseFormPost = stringSliceContains(discoveryClaims.ResponseModesSupported, "form_post")
 	return nil
+}
+
+func (h *HandlerState) redeemAuthCode(ctx context.Context, code string) (*oidctypes.Token, error) {
+	return h.getProvider(h.OAuth2Config, h.provider, h.HTTPClient).
+		ExchangeAuthcodeAndValidateTokens(
+			ctx,
+			code,
+			h.PKCE,
+			h.Nonce,
+			h.OAuth2Config.RedirectURL,
+		)
 }
 
 func stringSliceContains(slice []string, s string) bool {

@@ -14,22 +14,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/httputil/httperr"
-	"go.pinniped.dev/pkg/oidcclient/pkce"
-	"go.pinniped.dev/pkg/oidcclient/state"
 )
 
 func (h *HandlerState) HandleLogin(w http.ResponseWriter, r *http.Request) error {
-	h, err := h.updateCallbackHandlerState(r.Context())
+	err := h.updateHandlerState(r.Context())
 	if err != nil {
 		return httperr.Newf(http.StatusInternalServerError, "error setting up callback handler state %s", err.Error())
 	}
 
 	// Initialize login parameters.
-	h.State, err = state.Generate()
+	h.State, err = h.generateState()
 	if err != nil {
 		return err
 	}
-	h.PKCE, err = pkce.Generate()
+	h.Nonce, err = h.generateNonce()
+	if err != nil {
+		return err
+	}
+	h.PKCE, err = h.generatePKCE()
 	if err != nil {
 		return err
 	}
@@ -37,9 +39,13 @@ func (h *HandlerState) HandleLogin(w http.ResponseWriter, r *http.Request) error
 	// Prepare the common options for the authorization URL. We don't have the redirect URL yet though.
 	authorizeOptions := []oauth2.AuthCodeOption{
 		oauth2.AccessTypeOffline,
+		h.Nonce.Param(),
 		h.PKCE.Challenge(),
 		h.PKCE.Method(),
 	}
+	authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam("pinniped_idp_name", "undistro-gitlab-idp"))
+	authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam("pinniped_idp_type", "oidc"))
+
 	// Get the callback url from helm release
 	c, err := client.New(h.RestConf, client.Options{
 		Scheme: scheme.Scheme,
