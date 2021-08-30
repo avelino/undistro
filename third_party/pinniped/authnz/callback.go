@@ -1,4 +1,4 @@
-package callback
+package authnz
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"go.pinniped.dev/pkg/oidcclient/pkce"
 	"net/http"
 	"net/url"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/httputil/httperr"
 	"github.com/go-logr/logr"
 	"github.com/ory/fosite"
+	"go.pinniped.dev/pkg/oidcclient/state"
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,6 +36,8 @@ type HandlerState struct {
 	ClientID   string
 	Scopes     []string
 	HTTPClient *http.Client
+	State      state.State
+	PKCE       pkce.Code
 
 	// Generated parameters of a login flow.
 	provider     *oidc.Provider
@@ -49,6 +53,7 @@ func SetRestConfHandlerState(r *rest.Config) *HandlerState {
 }
 
 func (h *HandlerState) HandleAuthCodeCallback(w http.ResponseWriter, r *http.Request) error {
+	h.Ctx = r.Context()
 	// Perform OIDC discovery.
 	if err := h.initOIDCDiscovery(); err != nil {
 		return err
@@ -83,6 +88,12 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 		params = r.URL.Query()
 	}
 
+	// Validate OAuth2 state and fail if it's incorrect (to block CSRF).
+	if err := h.State.Validate(params.Get("state")); err != nil {
+		msg := fmt.Sprintf("missing or invalid state parameter: %s", err)
+		return httperr.New(http.StatusForbidden, msg)
+	}
+
 	// Check for error response parameters. See https://openid.net/specs/openid-connect-core-1_0.html#AuthError.
 	if errorParam := params.Get("error"); errorParam != "" {
 		if errorDescParam := params.Get("error_description"); errorDescParam != "" {
@@ -100,10 +111,11 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return httperr.Wrap(http.StatusBadRequest, "could not complete code exchange", err)
 	}
+	idToken := token.Extra("id_token")
 
 	resp := make(map[string]interface{})
 	resp["token"] = token
-	resp["type"] = "Bearer"
+	resp["id_token"] = idToken
 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(resp)
@@ -148,10 +160,10 @@ func (h *HandlerState) updateCallbackHandlerState(ctx context.Context) (*Handler
 		}
 		transport := &http.Transport{TLSClientConfig: tlsConfig}
 		cli = &http.Client{Transport: transport}
+		h.Ctx = context.WithValue(ctx, oauth2.HTTPClient, h.HTTPClient)
 	}
-
 	handlerState := &HandlerState{
-		Ctx:      context.Background(),
+		Ctx:      h.Ctx,
 		Logger:   ctrl.Log,
 		Issuer:   issuer,
 		ClientID: "undistro-ui",

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/getupio-undistro/undistro/pkg/meta"
@@ -292,6 +293,13 @@ type HelmRelease struct {
 
 	Spec   HelmReleaseSpec   `json:"spec,omitempty"`
 	Status HelmReleaseStatus `json:"status,omitempty"`
+}
+
+func (hr *HelmRelease) ValuesAsMap() map[string]interface{} {
+	m := make(map[string]interface{})
+	//nolint
+	json.Unmarshal(hr.Spec.Values.Raw, &m)
+	return m
 }
 
 // GetStatusConditions returns a pointer to the Status.Conditions slice
