@@ -95,19 +95,19 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 		params = r.URL.Query()
 	}
 
-	//// Validate OAuth2 state and fail if it's incorrect (to block CSRF).
-	//if err := h.State.Validate(params.Get("state")); err != nil {
-	//	msg := fmt.Sprintf("missing or invalid state parameter: %s", err)
-	//	return httperr.New(http.StatusForbidden, msg)
-	//}
-	//
-	//// Check for error response parameters. See https://openid.net/specs/openid-connect-core-1_0.html#AuthError.
-	//if errorParam := params.Get("error"); errorParam != "" {
-	//	if errorDescParam := params.Get("error_description"); errorDescParam != "" {
-	//		return httperr.Newf(http.StatusBadRequest, "login failed with code %q: %s", errorParam, errorDescParam)
-	//	}
-	//	return httperr.Newf(http.StatusBadRequest, "login failed with code %q", errorParam)
-	//}
+	// Validate OAuth2 state and fail if it's incorrect (to block CSRF).
+	if err := h.State.Validate(params.Get("state")); err != nil {
+		msg := fmt.Sprintf("missing or invalid state parameter: %s", err)
+		return httperr.New(http.StatusForbidden, msg)
+	}
+
+	// Check for error response parameters. See https://openid.net/specs/openid-connect-core-1_0.html#AuthError.
+	if errorParam := params.Get("error"); errorParam != "" {
+		if errorDescParam := params.Get("error_description"); errorDescParam != "" {
+			return httperr.Newf(http.StatusBadRequest, "login failed with code %q: %s", errorParam, errorDescParam)
+		}
+		return httperr.Newf(http.StatusBadRequest, "login failed with code %q", errorParam)
+	}
 
 	// Exchange the authorization code for access, ID, and refresh tokens and perform required
 	// validations on the returned ID token.
@@ -203,14 +203,7 @@ func (h *HandlerState) initOIDCDiscovery() error {
 		Scopes:   h.Scopes,
 	}
 
-	// Use response_mode=form_post if the provider supports it.
-	var discoveryClaims struct {
-		ResponseModesSupported []string `json:"response_modes_supported"`
-	}
-	if err := h.provider.Claims(&discoveryClaims); err != nil {
-		return fmt.Errorf("could not decode response_modes_supported in OIDC discovery from %q: %w", h.Issuer, err)
-	}
-	h.UseFormPost = stringSliceContains(discoveryClaims.ResponseModesSupported, "form_post")
+	h.UseFormPost = false
 	return nil
 }
 
@@ -223,13 +216,4 @@ func (h *HandlerState) redeemAuthCode(ctx context.Context, code string) (*oidcty
 			h.Nonce,
 			h.OAuth2Config.RedirectURL,
 		)
-}
-
-func stringSliceContains(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
 }
