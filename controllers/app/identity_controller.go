@@ -21,11 +21,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	conciergev1aplha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
 	supervisorconfigv1aplha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisoridpv1aplha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
@@ -280,13 +280,13 @@ func (r *IdentityReconciler) reconcileOIDCProvider(ctx context.Context) error {
 }
 
 func (r *IdentityReconciler) reconcileJWTAuthenticator(ctx context.Context, c client.Client, issuer string) (err error) {
-	const caSecretName = "ca-secret"
-	const caName = "ca.crt"
-	secretByt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
+	local, err := util.IsLocalCluster(ctx, c)
 	if err != nil {
 		return
 	}
-	secretData := base64.StdEncoding.EncodeToString(secretByt)
+
+	const caSecretName = "ca-secret"
+	const caName = "ca.crt"
 	jwtAuth := conciergev1aplha1.JWTAuthenticator{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "JWTAuthenticator",
@@ -299,10 +299,18 @@ func (r *IdentityReconciler) reconcileJWTAuthenticator(ctx context.Context, c cl
 		Spec: conciergev1aplha1.JWTAuthenticatorSpec{
 			Issuer:   issuer,
 			Audience: r.Audience,
-			TLS: &conciergev1aplha1.TLSSpec{
-				CertificateAuthorityData: secretData,
-			},
 		},
+	}
+	if local {
+		secretByt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
+		if err != nil {
+			return err
+		}
+		secretData := base64.StdEncoding.EncodeToString(secretByt)
+		jwtAuth.Spec.TLS = &conciergev1aplha1.TLSSpec{
+			CertificateAuthorityData: secretData,
+		}
+
 	}
 	_, err = util.CreateOrUpdate(ctx, c, &jwtAuth)
 	if err != nil {
@@ -328,7 +336,7 @@ func (r *IdentityReconciler) reconcileComponentInstallation(
 			return err
 		}
 
-		release, err = prepareHR(pc, targetNs, cl.GetNamespace(), "0.10.0", i, &release)
+		release, err = prepareHR(pc, targetNs, cl.GetNamespace(), "0.10.0", i)
 		if err != nil {
 			return err
 		}
@@ -353,7 +361,7 @@ func getFromConfigMap(ctx context.Context, c client.Client, name, ns, dataField 
 		return o, err
 	}
 	// convert data for more simply manipulation
-	f, _ := cm.Data[dataField]
+	f := cm.Data[dataField]
 	fede := strings.ReplaceAll(f, "|", "")
 	byt := []byte(fede)
 	err = yaml.Unmarshal(byt, &o)
@@ -377,7 +385,7 @@ func installComponent(ctx context.Context, c client.Client, hr appv1alpha1.HelmR
 }
 
 // prepareHR fills the Helm Release fields for the given component
-func prepareHR(pc PinnipedComponent, targetNs, clusterNs, version string, i appv1alpha1.Identity, hr *appv1alpha1.HelmRelease) (appv1alpha1.HelmRelease, error) {
+func prepareHR(pc PinnipedComponent, targetNs, clusterNs, version string, i appv1alpha1.Identity) (appv1alpha1.HelmRelease, error) {
 	chartName := fmt.Sprintf("%s-%s", "pinniped", pc)
 	vMap := map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -391,7 +399,7 @@ func prepareHR(pc PinnipedComponent, targetNs, clusterNs, version string, i appv
 	values := apiextensionsv1.JSON{
 		Raw: byt,
 	}
-	hr = &appv1alpha1.HelmRelease{
+	hr := &appv1alpha1.HelmRelease{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: appv1alpha1.GroupVersion.String(),
 			Kind:       "HelmRelease",

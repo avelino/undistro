@@ -176,7 +176,7 @@ spec:
         - --feature-gates=MachinePool=true
         command:
         - /manager
-        image: registry.undistro.io/k8s/cluster-api/kubeadm-bootstrap-controller:v0.4.1
+        image: registry.undistro.io/k8s/cluster-api/kubeadm-bootstrap-controller:v0.4.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

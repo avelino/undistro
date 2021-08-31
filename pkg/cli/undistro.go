@@ -28,6 +28,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/auth"
 	"k8s.io/kubectl/pkg/cmd/delete"
 	"k8s.io/kubectl/pkg/cmd/describe"
 	"k8s.io/kubectl/pkg/cmd/logs"
@@ -98,6 +99,7 @@ func NewUndistroCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 	cmd.AddCommand(NewCmdSetup(ioStreams))
 	cmd.AddCommand(NewCmdDestroy(ioStreams))
 	f := cmdutil.NewFactory(cfgFlags)
+	cmd.AddCommand(auth.NewCmdAuth(f, ioStreams))
 	cmd.AddCommand(delete.NewCmdDelete(f, ioStreams))
 	cmd.AddCommand(patch.NewCmdPatch(f, ioStreams))
 	cmd.AddCommand(apply.NewCmdApply("undistro", f, ioStreams))

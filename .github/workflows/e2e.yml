@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.16
+          go-version: ^1.17
         id: go
 
       - name: Check out code into the Go module directory
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Kind and create cluster
         run: |
-          GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1
+          GO111MODULE="on" go install sigs.k8s.io/kind@v0.11.1
           ./hack/cluster.sh -k
 
       - name: Configure AWS credentials for E2E

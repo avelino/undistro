@@ -204,7 +204,7 @@ spec:
         - --feature-gates=ClusterTopology=false
         command:
         - /manager
-        image: registry.undistro.io/k8s/cluster-api/kubeadm-control-plane-controller:v0.4.1
+        image: registry.undistro.io/k8s/cluster-api/kubeadm-control-plane-controller:v0.4.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

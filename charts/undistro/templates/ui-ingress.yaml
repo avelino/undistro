@@ -27,9 +27,11 @@ spec:
   tls:
     -
       hosts:
-      {{- range .Values.ingress.ipAddresses }}
+      {{with .Values.ingress.ipAddresses}}
+      {{- range . }}
         - {{ . }}
       {{- end }}
+      {{end}}
       {{- range .Values.ingress.hosts }}
         - {{ . }}
       {{- end }}

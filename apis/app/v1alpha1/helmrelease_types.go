@@ -135,9 +135,12 @@ type HelmReleaseSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// ResetValues will mark this Helm release to reset the values
 	// to the defaults of the targeted chart before performing
-	// an upgrade. Not explicitly setting this to `false` equals
-	// to `true` due to the declarative nature of the operator.
+	// an upgrade.
 	ResetValues *bool `json:"resetValues,omitempty"`
+	// ReuseValues will mark this Helm release to reuse the values
+	// to the old release of the targeted chart before performing
+	// an upgrade.
+	ReuseValues *bool `json:"reuseValues,omitempty"`
 	// SkipCRDs will mark this Helm release to skip the creation
 	// of CRDs during a Helm 3 installation.
 	SkipCRDs bool `json:"skipCRDs,omitempty"`

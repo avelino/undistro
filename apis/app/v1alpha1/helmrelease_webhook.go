@@ -91,12 +91,16 @@ func (r *HelmRelease) Default() {
 		reset := false
 		r.Spec.ResetValues = &reset
 	}
+	if r.Spec.ReuseValues == nil {
+		reuse := false
+		r.Spec.ReuseValues = &reuse
+	}
 	if r.Spec.MaxHistory == nil {
 		h := 10
 		r.Spec.MaxHistory = &h
 	}
 	if r.Spec.ForceUpgrade == nil {
-		force := true
+		force := false
 		r.Spec.ForceUpgrade = &force
 	}
 	for i := range r.Spec.ValuesFrom {

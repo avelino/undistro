@@ -15,6 +15,7 @@ import Helm from 'Util/docs/helm.md'
 import Community from 'Util/docs/community.md'
 import Glossary from 'Util/docs/glossary.md'
 import TagVersion from 'Components/atoms/tagVersion'
+import Development from 'Util/docs/development.md'
 
 export default function DocsRoute () {
 	return (
@@ -42,6 +43,7 @@ export default function DocsRoute () {
 						<Policies />
 						<Helm />
 						<Community />
+						<Development />
 						<Glossary />
 					</MDXProvider>
 				</div>

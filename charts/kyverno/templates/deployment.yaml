@@ -3,14 +3,20 @@ kind: Deployment
 metadata:
   name: {{ template "kyverno.fullname" . }}
   labels: {{ include "kyverno.labels" . | nindent 4 }}
+    app: kyverno
   namespace: {{ template "kyverno.namespace" . }}
 spec:
   selector:
     matchLabels: {{ include "kyverno.matchLabels" . | nindent 6 }}
   replicas: {{ .Values.replicaCount }}
+  {{- if .Values.updateStrategy }}
+  strategy:
+    {{ toYaml .Values.updateStrategy | nindent 4 | trim }}
+  {{- end }}
   template:
     metadata:
       labels: {{ include "kyverno.labels" . | nindent 8 }}
+        app: kyverno
         {{- range $key, $value := .Values.podLabels }}
         {{ $key }}: {{ $value }}
         {{- end }}
@@ -24,23 +30,18 @@ spec:
       {{- with .Values.podSecurityContext }}
       securityContext: {{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
-      {{if .Values.infraNode}}
-      nodeSelector:
-        node-role.undistro.io/infra: 'true'
-      tolerations:
-        - effect: 'NoSchedule'          
-          key: 'dedicated'              
-          value: 'infra' 
-      {{end}}
-      # {{- with .Values.affinity }}
-      # affinity: {{ tpl (toYaml .) $ | nindent 8 }}
-      # {{- end }}
-      # {{- with .Values.nodeSelector }}
-      # nodeSelector: {{ tpl (toYaml .) $ | nindent 8 }}
-      # {{- end }}
-      # {{- with .Values.tolerations }}
-      # tolerations: {{ tpl (toYaml .) $ | nindent 8 }}
-      # {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ template "kyverno.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
@@ -55,8 +56,10 @@ spec:
         - name: kyverno-pre
           image: {{ .Values.initImage.repository }}:{{ default .Chart.AppVersion (default .Values.image.tag .Values.initImage.tag) }}
           imagePullPolicy: {{ default .Values.image.pullPolicy .Values.initImage.pullPolicy }}
+          {{- with .Values.initResources }}
+          resources: {{ tpl (toYaml .) $ | nindent 12 }}
+          {{- end }}
           securityContext:
-            runAsUser: 1000
             runAsNonRoot: true
             privileged: false
             allowPrivilegeEscalation: false
@@ -69,9 +72,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          {{- with .Values.envVars }}
-          env:
-            {{- toYaml . | nindent 14 }}
+          {{- with .Values.envVarsInit }}
+          {{- toYaml . | nindent 10 }}
           {{- end }}
       containers:
         - name: kyverno
@@ -84,7 +86,6 @@ spec:
           resources: {{ tpl (toYaml .) $ | nindent 12 }}
           {{- end }}
           securityContext:
-            runAsUser: 1000
             runAsNonRoot: true
             privileged: false
             allowPrivilegeEscalation: false
@@ -96,6 +97,9 @@ spec:
           - containerPort: 9443
             name: https
             protocol: TCP
+          - containerPort: 8000
+            name: metrics-port
+            protocol: TCP
           env:
           - name: INIT_CONFIG
             value: {{ template "kyverno.configMapName" . }}
@@ -105,6 +109,11 @@ spec:
                 fieldPath: metadata.namespace
           - name: KYVERNO_SVC
             value: {{ template "kyverno.serviceName" . }}
+          {{- with .Values.envVars }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          - name: KYVERNO_DEPLOYMENT
+            value: {{ template "kyverno.fullname" . }}
         {{- with .Values.livenessProbe }}
           livenessProbe: {{ tpl (toYaml .) $ | nindent 12 }}
         {{- end }}

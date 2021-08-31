@@ -4,6 +4,9 @@ kind: Ingress
 metadata:
   annotations:
     nginx.ingress.kubernetes.io/enable-cors: "true"
+    {{- if not .Values.local }}
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    {{- end }}
   name: undistro-ingress-identity
   namespace: {{ .Values.identity.namespace }}
 spec:
@@ -21,9 +24,11 @@ spec:
   tls:
     -
       hosts:
-      {{- range .Values.ingress.ipAddresses }}
+      {{with .Values.ingress.ipAddresses}}
+      {{- range . }}
         - {{ . }}
       {{- end }}
+      {{end}}
       {{- range .Values.ingress.hosts }}
         - {{ . }}
       {{- end }}
