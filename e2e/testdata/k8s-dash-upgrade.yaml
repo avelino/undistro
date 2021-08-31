@@ -28,5 +28,7 @@ spec:
   values:
     ingress:
       enabled: true
+      paths:
+        - /k8s-dash
     serviceAccount:
       name: undistro-quickstart-dash
