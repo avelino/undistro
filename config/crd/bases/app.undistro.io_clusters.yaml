@@ -415,8 +415,13 @@ spec:
                 type: object
               bastionPublicIP:
                 type: string
-              conciergeEndpoint:
-                type: string
+              conciergeInfo:
+                properties:
+                  caBundle:
+                    type: string
+                  endpoint:
+                    type: string
+                type: object
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current

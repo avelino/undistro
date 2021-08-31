@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/groupsuffix"
@@ -21,6 +22,10 @@ func GetRealConciergeClientset(clientConfig clientcmd.ClientConfig, apiGroupSuff
 	if err != nil {
 		return nil, err
 	}
+	return GetRealConciergeClientsetFromConfig(restConfig, apiGroupSuffix)
+}
+
+func GetRealConciergeClientsetFromConfig(restConfig *rest.Config, apiGroupSuffix string) (conciergeclientset.Interface, error) {
 	client, err := kubeclient.New(
 		kubeclient.WithConfig(restConfig),
 		kubeclient.WithMiddleware(groupsuffix.New(apiGroupSuffix)),

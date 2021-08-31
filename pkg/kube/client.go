@@ -19,7 +19,6 @@ package kube
 import (
 	"context"
 	"fmt"
-
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +30,60 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	pinnipedcmd "github.com/getupio-undistro/undistro/third_party/pinniped/pinniped/cmd"
+	configv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/config/v1alpha1"
+	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+ var ErrConciergeNotInstalled = errors.New("concierge not installed")
+
+ func IgnoreConciergeNotInstalled(err error) error {
+	 if err != ErrConciergeNotInstalled {
+		 return err
+	 }
+	 return nil
+ }
+
+func ConciergeInfoFromConfig(ctx context.Context, cfg *rest.Config) (*appv1alpha1.ConciergeInfo, error){
+	pinnipedClient, err := pinnipedcmd.GetRealConciergeClientsetFromConfig(cfg, "pinniped.dev")
+	if err != nil {
+		return nil, ErrConciergeNotInstalled
+	}
+	credentialIssuers, err := pinnipedClient.ConfigV1alpha1().CredentialIssuers().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, ErrConciergeNotInstalled
+	}
+	if len(credentialIssuers.Items) != 1 {
+		return nil, errors.New("unable to discover concierge endpoint: credentialIssuer is 0 or more than 1")
+	}
+	credentialIssuer := credentialIssuers.Items[0]
+	for _, s := range credentialIssuer.Status.Strategies {
+		if s.Status != configv1alpha1.SuccessStrategyStatus {
+			continue
+		}
+		if s.Frontend == nil {
+			continue
+		}
+		switch s.Frontend.Type {
+		case configv1alpha1.ImpersonationProxyFrontendType:
+			info := appv1alpha1.ConciergeInfo{
+				Endpoint: s.Frontend.ImpersonationProxyInfo.Endpoint,
+				CABundle: s.Frontend.ImpersonationProxyInfo.CertificateAuthorityData,
+			}
+			return &info, nil
+		case configv1alpha1.TokenCredentialRequestAPIFrontendType:
+			info := appv1alpha1.ConciergeInfo{
+				Endpoint: s.Frontend.TokenCredentialRequestAPIInfo.Server,
+				CABundle: s.Frontend.TokenCredentialRequestAPIInfo.CertificateAuthorityData,
+			}
+			return &info, nil
+		default:
+			continue
+		}
+	}
+	return nil, ErrConciergeNotInstalled
+}
 
 func NewClusterClient(ctx context.Context, c client.Client, name, namespace string) (client.Client, error) {
 	cfg, err := NewClusterConfig(ctx, c, name, namespace)

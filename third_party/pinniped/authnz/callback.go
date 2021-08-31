@@ -7,30 +7,30 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/upstreamoidc"
-	"go.pinniped.dev/pkg/conciergeclient"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
-	clientauthv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"mime"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/httputil/httperr"
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/oidc/provider"
+	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/upstreamoidc"
 	"github.com/go-logr/logr"
 	"github.com/ory/fosite"
+	"go.pinniped.dev/pkg/conciergeclient"
 	"go.pinniped.dev/pkg/oidcclient/nonce"
 	"go.pinniped.dev/pkg/oidcclient/oidctypes"
 	"go.pinniped.dev/pkg/oidcclient/pkce"
 	"go.pinniped.dev/pkg/oidcclient/state"
 	"golang.org/x/oauth2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -131,30 +131,32 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return httperr.Wrap(http.StatusBadRequest, "could not complete code exchange", err)
 	}
-	resp := make(map[string]interface{})
-	resp["token"] = token
-	if err != nil {
-		return httperr.Wrap(http.StatusInternalServerError, "could not marshal token", err)
-	}
+
 	// Perform the RFC8693 token exchange.
 	exchangedToken, err := h.tokenExchangeRFC8693(token)
 	if err != nil {
 		return err
 	}
+	// get management cluster config
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	conciergeInfo, err := kube.ConciergeInfoFromConfig(h.Ctx, cfg)
+	if err != nil {
+		return err
+	}
+	// TODO: perform concierge exchange for all workload cluster
 	concierge, err := conciergeclient.New(
-		conciergeclient.WithEndpoint("https://127.0.0.1:6443"),
-		conciergeclient.WithBase64CABundle(""),
+		conciergeclient.WithEndpoint(conciergeInfo.Endpoint),
+		conciergeclient.WithBase64CABundle(conciergeInfo.CABundle),
 		conciergeclient.WithAuthenticator("jwt", "supervisor-jwt-authenticator"),
 		conciergeclient.WithAPIGroupSuffix("pinniped.dev"),
 	)
 	if err != nil {
 		return err
 	}
-	cred := tokenCredential(exchangedToken)
-	exchangeToken := func(ctx context.Context, client *conciergeclient.Client, token string) (*clientauthv1beta1.ExecCredential, error) {
-		return client.ExchangeToken(ctx, token)
-	}
-	cred, err = exchangeToken(h.Ctx, concierge, token.IDToken.Token)
+	cred, err := concierge.ExchangeToken(h.Ctx, exchangedToken.IDToken.Token)
 	if err != nil {
 		return err
 	}
@@ -167,22 +169,6 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 		return err
 	}
 	return nil
-}
-
-func tokenCredential(token *oidctypes.Token) *clientauthv1beta1.ExecCredential {
-	cred := clientauthv1beta1.ExecCredential{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ExecCredential",
-			APIVersion: "client.authentication.k8s.io/v1beta1",
-		},
-		Status: &clientauthv1beta1.ExecCredentialStatus{
-			Token: token.IDToken.Token,
-		},
-	}
-	if !token.IDToken.Expiry.IsZero() {
-		cred.Status.ExpirationTimestamp = &token.IDToken.Expiry
-	}
-	return &cred
 }
 
 func (h *HandlerState) updateHandlerState(ctx context.Context) error {

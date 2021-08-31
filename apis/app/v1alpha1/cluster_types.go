@@ -158,6 +158,11 @@ type Bastion struct {
 	InstanceType        string   `json:"instanceType,omitempty"`
 }
 
+type ConciergeInfo struct {
+	Endpoint string `json:"endpoint,omitempty"`
+	CABundle string `json:"caBundle,omitempty"`
+}
+
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
 	Paused                 bool                   `json:"paused,omitempty"`
@@ -187,7 +192,7 @@ type ClusterStatus struct {
 	KubernetesVersion   string             `json:"kubernetesVersion,omitempty"`
 	ControlPlane        ControlPlaneNode   `json:"controlPlane,omitempty"`
 	Workers             []WorkerNode       `json:"workers,omitempty"`
-	ConciergeEndpoint   string             `json:"conciergeEndpoint,omitempty"`
+	ConciergeInfo       *ConciergeInfo      `json:"conciergeInfo,omitempty"`
 }
 
 // +genclient

@@ -25,6 +25,7 @@ import (
 	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/cloud"
 	"github.com/getupio-undistro/undistro/pkg/fs"
+	"github.com/getupio-undistro/undistro/pkg/kube"
 	"github.com/getupio-undistro/undistro/pkg/meta"
 	"github.com/getupio-undistro/undistro/pkg/retry"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
@@ -240,12 +241,28 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, log logr.Logger, cl a
 	cl.Status.BastionConfig = cl.Spec.Bastion
 	if capiCluster.Status.ControlPlaneReady && capiCluster.Status.InfrastructureReady {
 		cl = appv1alpha1.ClusterReady(cl)
-		if cl.Status.ConciergeEndpoint == "" {
-			// Todo get cluster specific concierge endpoint
+		if cl.Status.ConciergeInfo == nil {
+			cl, err = r.reconcileConciergeEndpoint(ctx, cl)
+			if err != nil {
+				return cl, ctrl.Result{}, err
+			}
 		}
 		return cl, ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
 	return appv1alpha1.ClusterNotReady(cl, meta.WaitProvisionReason, "wait cluster to be provisioned"), ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+}
+
+func (r *ClusterReconciler) reconcileConciergeEndpoint(ctx context.Context, cl appv1alpha1.Cluster) (appv1alpha1.Cluster, error) {
+	cfg, err := kube.NewClusterConfig(ctx, r.Client, cl.Name, cl.GetNamespace())
+	if err != nil {
+		return cl, err
+	}
+	info, err := kube.ConciergeInfoFromConfig(ctx, cfg)
+	if err != nil {
+		return cl, kube.IgnoreConciergeNotInstalled(err)
+	}
+	cl.Status.ConciergeInfo = info
+	return cl, nil
 }
 
 func (r *ClusterReconciler) hasDiff(cl *appv1alpha1.Cluster) bool {
