@@ -4,19 +4,32 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+	"net/http"
 
 	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/getupio-undistro/undistro/pkg/undistro"
 	"github.com/getupio-undistro/undistro/pkg/util"
-	"golang.org/x/oauth2"
-	"net/http"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/httputil/httperr"
+	"golang.org/x/oauth2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	supervisorAuthorizeUpstreamNameParam = "pinniped_idp_name"
+	supervisorAuthorizeUpstreamTypeParam = "pinniped_idp_type"
 )
 
 func (h *HandlerState) HandleLogin(w http.ResponseWriter, r *http.Request) error {
+	params := r.URL.Query()
+	idpName := params.Get("idp")
+	if idpName == "" {
+		return httperr.Newf(http.StatusBadRequest, "missing 'idp' parameter or query string")
+	}
+	idpFmtName := fmt.Sprintf("undistro-%s-idp", idpName)
+	h.upstreamIdentityProviderName = idpFmtName
+
 	err := h.updateHandlerState(r.Context())
 	if err != nil {
 		return httperr.Newf(http.StatusInternalServerError, "error setting up callback handler state %s", err.Error())
@@ -43,8 +56,6 @@ func (h *HandlerState) HandleLogin(w http.ResponseWriter, r *http.Request) error
 		h.PKCE.Challenge(),
 		h.PKCE.Method(),
 	}
-	authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam("pinniped_idp_name", "undistro-gitlab-idp"))
-	authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam("pinniped_idp_type", "oidc"))
 
 	// Get the callback url from helm release
 	c, err := client.New(h.RestConf, client.Options{
@@ -54,14 +65,21 @@ func (h *HandlerState) HandleLogin(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	hr := appv1alpha1.HelmRelease{}
-	k := client.ObjectKey{
+	hrKey := client.ObjectKey{
 		Namespace: undistro.Namespace,
 		Name:      "pinniped-supervisor",
 	}
-	err = c.Get(h.Ctx, k, &hr)
+	// get supervisor helm release
+	err = c.Get(h.Ctx, hrKey, &hr)
 	if err != nil {
 		return err
 	}
+
+	if h.upstreamIdentityProviderName != "" {
+		authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam(supervisorAuthorizeUpstreamNameParam, h.upstreamIdentityProviderName))
+		authorizeOptions = append(authorizeOptions, oauth2.SetAuthURLParam(supervisorAuthorizeUpstreamTypeParam, h.upstreamIdentityProviderType))
+	}
+
 	cli := http.DefaultClient
 	isLocal, err := util.IsLocalCluster(h.Ctx, c)
 	if err != nil {

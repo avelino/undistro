@@ -240,6 +240,9 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, log logr.Logger, cl a
 	cl.Status.BastionConfig = cl.Spec.Bastion
 	if capiCluster.Status.ControlPlaneReady && capiCluster.Status.InfrastructureReady {
 		cl = appv1alpha1.ClusterReady(cl)
+		if cl.Status.ConciergeEndpoint == "" {
+			// Todo get cluster specific concierge endpoint
+		}
 		return cl, ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
 	return appv1alpha1.ClusterNotReady(cl, meta.WaitProvisionReason, "wait cluster to be provisioned"), ctrl.Result{RequeueAfter: 30 * time.Second}, nil
