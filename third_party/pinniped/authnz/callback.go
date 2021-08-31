@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/upstreamoidc"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"mime"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
@@ -45,10 +48,13 @@ type HandlerState struct {
 	Nonce      nonce.Nonce
 
 	getProvider func(*oauth2.Config, *oidc.Provider, *http.Client) provider.UpstreamOIDCIdentityProviderI
+	validateIDToken func(ctx context.Context, provider *oidc.Provider, audience string, token string) (*oidc.IDToken, error)
+
 	// External calls for things.
 	generateState func() (state.State, error)
 	generatePKCE  func() (pkce.Code, error)
 	generateNonce func() (nonce.Nonce, error)
+
 
 	// Generated parameters of a login flow.
 	provider     *oidc.Provider
@@ -125,6 +131,11 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return httperr.Wrap(http.StatusInternalServerError, "could not marshal token", err)
 	}
+	// Perform the RFC8693 token exchange.
+	exchangedToken, err := h.tokenExchangeRFC8693(baseToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to exchange token: %w", err)
+	}
 	return nil
 }
 
@@ -180,6 +191,9 @@ func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 	h.generateState = state.Generate
 	h.generatePKCE = pkce.Generate
 	h.getProvider = upstreamoidc.New
+    h.validateIDToken = func(ctx context.Context, provider *oidc.Provider, audience string, token string) (*oidc.IDToken, error) {
+	return provider.Verifier(&oidc.Config{ClientID: audience}).Verify(ctx, token)
+},
 	return nil
 }
 
@@ -205,6 +219,77 @@ func (h *HandlerState) initOIDCDiscovery() error {
 
 	h.UseFormPost = false
 	return nil
+}
+
+func (h *handlerState) tokenExchangeRFC8693(baseToken *oidctypes.Token) (*oidctypes.Token, error) {
+	h.logger.V(debugLogLevel).Info("Pinniped: Performing RFC8693 token exchange", "requestedAudience", h.requestedAudience)
+	// Perform OIDC discovery. This may have already been performed if there was not a cached base token.
+	if err := h.initOIDCDiscovery(); err != nil {
+		return nil, err
+	}
+
+	// Form the HTTP POST request with the parameters specified by RFC8693.
+	reqBody := strings.NewReader(url.Values{
+		"client_id":            []string{h.clientID},
+		"grant_type":           []string{"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"audience":             []string{h.requestedAudience},
+		"subject_token":        []string{baseToken.AccessToken.Token},
+		"subject_token_type":   []string{"urn:ietf:params:oauth:token-type:access_token"},
+		"requested_token_type": []string{"urn:ietf:params:oauth:token-type:jwt"},
+	}.Encode())
+	req, err := http.NewRequestWithContext(h.ctx, http.MethodPost, h.oauth2Config.Endpoint.TokenURL, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("could not build RFC8693 request: %w", err)
+	}
+	req.Header.Set("content-type", "application/x-www-form-urlencoded")
+
+	// Perform the request.
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Expect an HTTP 200 response with "application/json" content type.
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected HTTP response status %d", resp.StatusCode)
+	}
+	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("content-type"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode content-type header: %w", err)
+	}
+	if mediaType != "application/json" {
+		return nil, fmt.Errorf("unexpected HTTP response content type %q", mediaType)
+	}
+
+	// Decode the JSON response body.
+	var respBody struct {
+		AccessToken     string `json:"access_token"`
+		IssuedTokenType string `json:"issued_token_type"`
+		TokenType       string `json:"token_type"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Expect the token_type and issued_token_type response parameters to have some known values.
+	if respBody.TokenType != "N_A" {
+		return nil, fmt.Errorf("got unexpected token_type %q", respBody.TokenType)
+	}
+	if respBody.IssuedTokenType != "urn:ietf:params:oauth:token-type:jwt" {
+		return nil, fmt.Errorf("got unexpected issued_token_type %q", respBody.IssuedTokenType)
+	}
+
+	// Validate the returned JWT to make sure we got the audience we wanted and extract the expiration time.
+	stsToken, err := h.validateIDToken(h, h.provider, h.requestedAudience, respBody.AccessToken)
+	if err != nil {
+		return nil, fmt.Errorf("received invalid JWT: %w", err)
+	}
+
+	return &oidctypes.Token{IDToken: &oidctypes.IDToken{
+		Token:  respBody.AccessToken,
+		Expiry: metav1.NewTime(stsToken.Expiry),
+	}}, nil
 }
 
 func (h *HandlerState) redeemAuthCode(ctx context.Context, code string) (*oidctypes.Token, error) {

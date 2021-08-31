@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"regexp"
+	"net/url"
 	"strings"
 	"time"
 
@@ -160,7 +160,7 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 		cl.Name = "management"
 		cl.Namespace = undistro.Namespace
 		// regex to get ip or dns names
-		callbackURL := fmt.Sprintf("https://%s/callback", findIP(issuer))
+		callbackURL := fmt.Sprintf("https://%s/callback", hostFromURL(issuer))
 		values["config"] = map[string]interface{}{
 			"callbackURL": callbackURL,
 		}
@@ -196,12 +196,12 @@ func (r *IdentityReconciler) reconcile(ctx context.Context, req ctrl.Request, i 
 	return err
 }
 
-func findIP(input string) string {
-	numBlock := "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
-	regexPattern := numBlock + "\\." + numBlock + "\\." + numBlock + "\\." + numBlock
-
-	regEx := regexp.MustCompile(regexPattern)
-	return regEx.FindString(input)
+func hostFromURL(input string) string {
+	u, err := url.Parse(input)
+	if err != nil {
+		return ""
+	}
+	return u.Host
 }
 
 func (r *IdentityReconciler) reconcileFederationDomain(ctx context.Context, federationDomainCfg map[string]interface{}) error {
