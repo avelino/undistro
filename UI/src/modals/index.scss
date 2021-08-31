@@ -20,7 +20,7 @@
     box-sizing: border-box;
     border-radius: 4px;
     box-shadow: 0 3px 10px rgba(#000, 0.1);
-    background-color: var(--gray-blue-2, $gray-blue-2);
+    background-color: var(--gray-blue-600, $gray-blue-600);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -30,7 +30,7 @@
       align-items: center;
       justify-content: center;
       height: 24px;
-      background-color: var(--gray-blue-4, $gray-blue-4);
+      background-color: var(--gray-blue-400, $gray-blue-400);
       padding: 0 8px;
       text-transform: uppercase;
       position: relative;
@@ -60,11 +60,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--close-button, $close-button);
+        color: var(--gray-700, $gray-700);
         font-size: 12px;
 
         &:hover {
-          color: var(--gray-blue-2, $gray-blue-2);
+          color: var(--gray-blue-600, $gray-blue-600);
         }
       }
     }
@@ -107,14 +107,14 @@
 
       .title-box {
         margin-bottom: 27px;
-        background-color: var(--gray-blue-2, $gray-blue-2);
+        background-color: var(--gray-blue-600, $gray-blue-600);
         width: fit-content;
         margin: auto;
         padding: 0 4px;
 
         &::before {
           content: '';
-          border: 1px solid var(--gray-blue-4, $gray-blue-4);
+          border: 1px solid var(--gray-blue-400, $gray-blue-400);
           width: 678px;
           height: 270px;
           position: absolute;
@@ -140,7 +140,7 @@
         height: 84px;
         margin: 28px auto 17px;
         list-style: none;
-        border: 1px solid var(--gray-blue-4, $gray-blue-4);
+        border: 1px solid var(--gray-blue-400, $gray-blue-400);
         border-radius: 2px;
         padding: 2px;
         overflow: auto;
@@ -152,7 +152,7 @@
           align-items: center;
 
           &:hover {
-            background-color: var(--gray-blue-3, $gray-blue-3);
+            background-color: var(--gray-blue-500, $gray-blue-500);
           }
 
           p {
@@ -275,13 +275,13 @@
       p {
         font-size: 16px;
         margin-bottom: 5px;
-        color: var(--off-white, $off-white);
+        color: var(--gray-500, $gray-500);
       }
 
       .square {
         width: 100px;
         height: 100px;
-        background-color: var(--gray-blue-4, $gray-blue-4);
+        background-color: var(--gray-blue-400, $gray-blue-400);
         display: flex;
         align-items: center;
         justify-content: center;

@@ -1,7 +1,7 @@
 @import 'styles/theme';
 
 .cluster-error-container {
-  background-color: $table-black-color;
+  background-color: $gray-blue-700;
   border-top: 6px solid $error;
   margin-top: 44px;
   padding: 64px 0px;
@@ -39,7 +39,7 @@
 }
 
 .cluster-error-message {
-  color: $off-white;
+  color: $gray-500;
   font-family: $font-base;
   font-size: 14px;
   font-style: normal;

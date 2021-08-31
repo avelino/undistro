@@ -46,7 +46,7 @@
 
         .infra-node-container {
           padding: 12px 12px 0;
-          border: 1px solid var(--gray-blue-4, $gray-blue-4);
+          border: 1px solid var(--gray-blue-400, $gray-blue-400);
           width: 228px;
           margin-right: 10px;
         }
@@ -55,7 +55,7 @@
           display: flex;
           justify-content: space-evenly;
           padding: 12px 12px 0;
-          border: 1px solid var(--gray-blue-4, $gray-blue-4);
+          border: 1px solid var(--gray-blue-400, $gray-blue-400);
           border-radius: 2px;
           width: 406px;
   
@@ -84,14 +84,14 @@
         .box-content {
           width: 222px;
           margin: 0 1px;
-          border: 1px solid var(--gray-blue-4, $gray-blue-4);
+          border: 1px solid var(--gray-blue-400, $gray-blue-400);
           display: flex;
           flex-direction: column;
 
           .icon-plus {
-            color: var(--off-white, $off-white);
+            color: var(--gray-500, $gray-500);
             display: flex;
-            background-color: var(--gray-blue-4, $gray-blue-4);
+            background-color: var(--gray-blue-400, $gray-blue-400);
             align-items: center;
             justify-content: center;
             padding: 3px 4px;
@@ -101,7 +101,7 @@
 
           .title {
             margin: 0;
-            background-color: var(--gray-blue-4, $gray-blue-4);
+            background-color: var(--gray-blue-400, $gray-blue-400);
             text-align: center;
             padding: 2px 3px;
           }
@@ -124,7 +124,7 @@
               align-items: center;
     
               &:hover {
-                background-color: var(--gray-blue-3, $gray-blue-3);
+                background-color: var(--gray-blue-500, $gray-blue-500);
               }
     
               p {

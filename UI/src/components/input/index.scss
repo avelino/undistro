@@ -6,7 +6,7 @@
   position: relative;
 
   .icon-plus {
-    color: var(--off-white, $off-white);
+    color: var(--gray-500, $gray-500);
     position: absolute;
     right: 10px;
     cursor: pointer;
@@ -14,8 +14,8 @@
   }
 
   label {
-    color: var(--off-white, $off-white);
-    background-color: var(--gray-blue-2, $gray-blue-2);
+    color: var(--gray-500, $gray-500);
+    background-color: var(--gray-blue-600, $gray-blue-600);
     border-radius: 2px;
     font-weight: 500;
     font-size: 12px;
@@ -37,10 +37,10 @@
     height: 38px;
     outline: none;
     font-size: 14px;
-    border: 1px solid var(--off-white, $off-white);
+    border: 1px solid var(--gray-500, $gray-500);
     margin-bottom: 15px;
-    background-color: var(--gray-blue-2, $gray-blue-2);
-    color: var(--off-white, $off-white);
+    background-color: var(--gray-blue-600, $gray-blue-600);
+    color: var(--gray-500, $gray-500);
   }
 
   input[disabled] {

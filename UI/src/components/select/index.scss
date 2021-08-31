@@ -11,8 +11,8 @@
     position: relative;
 
     label {
-      color: var(--off-white, $off-white);
-      background-color: var(--gray-blue-2, $gray-blue-2);
+      color: var(--gray-500, $gray-500);
+      background-color: var(--gray-blue-600, $gray-blue-600);
       border-radius: 2px;
       font-weight: 500;
       font-size: 12px;
@@ -29,14 +29,14 @@
   .select-container {
     &__control {
       border-radius: 2px;
-      border: 1px solid var(--off-white, $off-white);
+      border: 1px solid var(--gray-500, $gray-500);
       outline: none;
       box-shadow: none;
-      background-color: var(--gray-blue-2, $gray-blue-2);
+      background-color: var(--gray-blue-600, $gray-blue-600);
 
       &:hover {
         box-shadow: none;
-        border: 1px solid var(--off-white, $off-white);
+        border: 1px solid var(--gray-500, $gray-500);
       }
     }
 
@@ -54,9 +54,9 @@
 
     &__value-container {
       font-size: 14px;
-      color: var(--gray-blue-2, $gray-blue-2);
+      color: var(--gray-blue-600, $gray-blue-600);
       padding-left: 8px;
-      background-color: var(--gray-blue-2, $gray-blue-2);
+      background-color: var(--gray-blue-600, $gray-blue-600);
     }
 
     &__Input {
@@ -89,7 +89,7 @@
     &__menu {
       z-index: 2;
       font-size: 14px;
-      color: var(--gray-blue-2, $gray-blue-2);
+      color: var(--gray-blue-600, $gray-blue-600);
       background-color: var(--background, $blackground);
     }
 
@@ -100,7 +100,7 @@
 
       &:hover {
         background-color: var(--menu-left, $menu-left);
-        color: var(--off-white, $off-white) !important;
+        color: var(--gray-500, $gray-500) !important;
       }
 
       &--is-selected {

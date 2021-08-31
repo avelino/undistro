@@ -8,7 +8,7 @@ button {
   font-weight: 500;
   border-radius: 2px;
   cursor: pointer;
-  color: var(--off-white, $off-white);
+  color: var(--gray-500, $gray-500);
 
   &.button--large {
     padding: 8px 24px;
@@ -38,24 +38,24 @@ button {
   }
 
   &.button--black {
-    border: 1px solid var(--off-white, $off-white);
-    background: var(--gray-blue-2, $gray-blue-2);
-    color: var(--off-white, $off-white);
+    border: 1px solid var(--gray-500, $gray-500);
+    background: var(--gray-blue-600, $gray-blue-600);
+    color: var(--gray-500, $gray-500);
 
     &:hover {
-      border: 1px solid var(--off-white, $off-white);
-      background: var(--off-white, $off-white);
-      color: var(--gray-blue-2, $gray-blue-2);
+      border: 1px solid var(--gray-500, $gray-500);
+      background: var(--gray-500, $gray-500);
+      color: var(--gray-blue-600, $gray-blue-600);
     }
   }
 
   &.button--gray {
-    border: 1px solid var(--off-white, $off-white);
-    background: var(--off-white, $off-white);
+    border: 1px solid var(--gray-500, $gray-500);
+    background: var(--gray-500, $gray-500);
 
     &:hover {
-      border: 1px solid var(--gray-light, $gray-light);
-      background: var(--gray-light, $gray-light);
+      border: 1px solid var(--gray-300, $gray-300);
+      background: var(--gray-300, $gray-300);
     }
   }
 

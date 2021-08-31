@@ -1,10 +1,10 @@
 @font-face {
     font-family: "icons";
-    src: url("./icons.eot?23dc1a926bcc2e79e5be91d779b08546?#iefix") format("embedded-opentype"),
-url("./icons.woff2?23dc1a926bcc2e79e5be91d779b08546") format("woff2"),
-url("./icons.woff?23dc1a926bcc2e79e5be91d779b08546") format("woff"),
-url("./icons.ttf?23dc1a926bcc2e79e5be91d779b08546") format("truetype"),
-url("./icons.svg?23dc1a926bcc2e79e5be91d779b08546#icons") format("svg");
+    src: url("./icons.eot?4d7edb9958465d82433f3e211c159764?#iefix") format("embedded-opentype"),
+url("./icons.woff2?4d7edb9958465d82433f3e211c159764") format("woff2"),
+url("./icons.woff?4d7edb9958465d82433f3e211c159764") format("woff"),
+url("./icons.ttf?4d7edb9958465d82433f3e211c159764") format("truetype"),
+url("./icons.svg?4d7edb9958465d82433f3e211c159764#icons") format("svg");
 }
 
 i[class^="icon-"]:before, i[class*=" icon-"]:before {
@@ -21,48 +21,63 @@ i[class^="icon-"]:before, i[class*=" icon-"]:before {
 .icon-arrow-down:before {
     content: "\f101";
 }
-.icon-arrow-solid-up:before {
+.icon-arrow-right:before {
     content: "\f102";
 }
-.icon-arrow-up:before {
+.icon-arrow-solid-up:before {
     content: "\f103";
 }
-.icon-close-solid:before {
+.icon-arrow-up:before {
     content: "\f104";
 }
-.icon-close:before {
+.icon-beetle:before {
     content: "\f105";
 }
-.icon-cluster:before {
+.icon-check:before {
     content: "\f106";
 }
-.icon-dots:before {
+.icon-close-solid:before {
     content: "\f107";
 }
-.icon-git:before {
+.icon-close:before {
     content: "\f108";
 }
-.icon-helm:before {
+.icon-cluster:before {
     content: "\f109";
 }
-.icon-network:before {
+.icon-clustersIcon:before {
     content: "\f10a";
 }
-.icon-node:before {
+.icon-dots:before {
     content: "\f10b";
 }
-.icon-play:before {
+.icon-git:before {
     content: "\f10c";
 }
-.icon-plus:before {
+.icon-helm:before {
     content: "\f10d";
 }
-.icon-settings:before {
+.icon-network:before {
     content: "\f10e";
 }
-.icon-stop:before {
+.icon-node:before {
     content: "\f10f";
 }
-.icon-workload:before {
+.icon-play:before {
     content: "\f110";
+}
+.icon-plus:before {
+    content: "\f111";
+}
+.icon-settings:before {
+    content: "\f112";
+}
+.icon-stop:before {
+    content: "\f113";
+}
+.icon-union:before {
+    content: "\f114";
+}
+.icon-workload:before {
+    content: "\f115";
 }

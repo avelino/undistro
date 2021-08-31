@@ -7,12 +7,22 @@
 
   .side-itens {
     font-size: 14px;
-    padding-top: 8px;
   }
 
   li {
     text-transform: uppercase;
   }
+}
+
+.side-item-default {
+  background-color: var(--gray-blue-550, $gray-blue-550);
+  display: flex;
+  height: 42px;
+  color: var(--text-gray-middle, $text-gray-middle);
+  cursor: pointer;
+  padding: 0 4px;
+  align-items: center;
+  justify-content: center;
 }
 
 .side-item {
@@ -64,8 +74,8 @@
     p,
     i,
     svg {
-      color: var(--off-white, $off-white);
-      fill: var(--off-white, $off-white);
+      color: var(--gray-500, $gray-500);
+      fill: var(--gray-500, $gray-500);
     }
   }
 }

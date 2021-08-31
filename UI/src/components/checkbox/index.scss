@@ -1,0 +1,41 @@
+@import 'styles/theme';
+
+.checkbox {
+  display: flex;
+  background-color: var(--black, $black);
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  justify-content: center;
+
+  span {
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    border-radius: 2px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    i {
+      display: none;
+      font-size: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  &--checked {
+    span {
+      i {
+        color: #fff;
+        display: flex;
+      }
+    }
+  }
+
+  &--disabled {
+    cursor: default;
+  }
+}

@@ -4,12 +4,16 @@
   border-collapse: collapse;
   font-family: $font-base;
   overflow: hidden;
-  color: var(--off-white, $off-white);
+  color: var(--gray-500, $gray-500);
   box-sizing: border-box;
   border-style: hidden;
   width: calc(100% - 25px);
   max-height: 200px;
   overflow-y: auto;
+
+  .checkbox-row {
+    width: 35px;
+  }
 
   .icon-button {
     color: #fff;
@@ -34,7 +38,7 @@
     box-sizing: border-box;
 
     &:not(:last-child) {
-      border-right: 2px solid var(--table-black-color, $table-black-color);
+      border-right: 2px solid var(--gray-blue-700, $gray-blue-700);
     }
   }
 
@@ -105,7 +109,7 @@
     }
 
     tr {
-      background-color: var(--table-color-1, $table-color-1);
+      background-color: var(--gray-blue-550, $gray-blue-550);
 
       &:not(:last-child) {
         border-bottom: 1px solid var(--table-color-2, $table-color-2);

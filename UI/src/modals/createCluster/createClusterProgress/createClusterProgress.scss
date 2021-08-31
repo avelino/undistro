@@ -1,7 +1,7 @@
 @import 'styles/theme';
 
 .cluster-progress-container {
-  background-color: $table-black-color;
+  background-color: $gray-blue-700;
   box-sizing: border-box;
   height: 395px;
   overflow: auto;
@@ -41,7 +41,7 @@
 }
 
 .cluster-progress-message {
-  color: $off-white;
+  color: $gray-500;
   font-family: monospace, monospace;
   font-size: 14px;
   font-weight: 400;

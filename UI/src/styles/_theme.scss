@@ -3,13 +3,16 @@ $font-base: "Montserrat", sans-serif;
 
 //Main colors
 $primary: #657f97;
-$primary-light: #7895b1;
-$secondary: #00c8ff;
+$primary-light: #799ec0;
 
 //Action colors
-$success: #12e4b0;
+$success: #39e9aa;
+$success-darker: #4dcd9f; 
 $warning: #f2c76e;
-$error: #ff5a60;
+$warning-darker: #d8ad54;
+$error: #d14a4f;
+$error-light: #ff5a60;
+$error-darker: #aF4044;
 
 //UI colors
 $blackground: #29292b;
@@ -21,29 +24,30 @@ $menu-left-dividers: #353a41;
 
 //Gray scale
 $black: #2d3033;
-$gray-blue-1: #212427;
-$gray-blue-2: #282c31;
-$gray-blue-3: #3b434e;
-$gray-blue-4: #495059;
-$gray-light: #f8f8f8;
 $area-focus: #717c8a;
-$close-button: #82868b;
-$gray-900: #353536;
-$gray-800: #515155;
-$gray-600: #636363;
-$gray-500: #868b93;
-$gray-300: #a8a8a8;
-$gray-200: #bbb;
-$gray-100: #dfdfdf;
+$gray-900: #303030;
+$gray-800: #6c6c6c;
+$gray-700: #82868b;
+$gray-600: #a9a9a9;
+$gray-500: #D7D7D7;
+$gray-300: #f8f8f8;
+
+//Gray blue scale
+$gray-blue-900: #111214;
+$gray-blue-800: #191a1d;
+$gray-blue-700: #212427;
+$gray-blue-600: #282c31;
+$gray-blue-550: #373c43;
+$gray-blue-500: #3b434e;
+$gray-blue-400: #495059;
+$gray-blue-200: #656d7a;
+$gray-blue-100: #7f8996; 
 
 //Text
 $text-gray-middle: #a9a9a9;
-$off-white: #d7d7d7;
 $text: #fff;
 
 //table
-$table-black-color: #212427;
-$table-color-1: #373c43;
 $table-color-2: #3c424a;
 $table-color-3: #2d3033;
 $table-color-4: #60666c;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Classnames from 'classnames'
 import Api from 'util/api'
+import Checkbox from '@components/checkbox'
 import './index.scss'
 import { useClickOutside } from 'hooks/useClickOutside'
 import { useDisclosure } from 'hooks/useDisclosure'
@@ -42,7 +43,7 @@ const Table = props => {
   const [key, setKey] = useState('')
   const [order, setOrder] = useState('')
   const [version, setVersion] = useState([])
-
+  const [value, setValue] = useState(false)
   const getK8sVersion = () => {
     Api.Provider.list('flavors')
       .then(res => res.items.map(elm => setVersion(elm.spec.supportedK8SVersions)))
@@ -69,6 +70,9 @@ const Table = props => {
     <table className="table">
       <thead>
         <tr>
+          <td className='checkbox-row'>
+            <Checkbox value={value} onChange={setValue} />
+          </td>
           <td />
           {props.header.map(elm => (
             <td key={elm.name}>
@@ -130,6 +134,7 @@ const Row = props => {
   const [show, setShow] = useState(false)
   const [pause, setPause] = useState(props.pause)
   const [status, setStatus] = useState(props.status)
+  const [value, setValue] = useState(false)
   const history = useHistory()
   const menuRef = useRef(null)
 
@@ -214,6 +219,9 @@ const Row = props => {
 
   return (
     <tr>
+      <td className="checkbox-row">
+        <Checkbox value={value} onChange={setValue} />
+      </td>
       <td className="select-row">
         {isChangeVersionAlertOpen && (
           <ChangeVersionAlert

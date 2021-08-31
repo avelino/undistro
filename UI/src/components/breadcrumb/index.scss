@@ -1,0 +1,22 @@
+
+@import 'styles/theme';
+
+.bread-crumb {
+  display: flex;
+  background-color: var(--gray-blue-400, $gray-blue-400);
+  height: 42px;
+  align-items: center;
+  margin: -16px 0 20px -25px;
+  padding: 0 21px;
+
+  p {
+    cursor: pointer;
+  }
+
+  i {
+    margin: 0 8px;
+    display: flex;
+    color: var(--text, $text);
+    font-size: 12px;
+  }
+}

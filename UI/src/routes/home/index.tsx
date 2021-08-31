@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import Table from '@components/clusterTable'
 import Api from 'util/api'
 import moment from 'moment'
+import BreadCrumb from '@components/breadcrumb'
 import './index.scss'
 
 const headers = [
@@ -84,6 +85,7 @@ export default function HomePage () {
 
 	return (
 		<div className='home-page-route'>
+      <BreadCrumb />
 			<Table data={(clusters || [])} header={headers}/>	
 		</div>
 	)
