@@ -32,7 +32,7 @@ import (
 	"go.pinniped.dev/pkg/oidcclient/state"
 	"golang.org/x/oauth2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
+
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,7 +88,7 @@ func (h *HandlerState) handleRefresh(ctx context.Context, refreshToken *oidctype
 	refreshed, err := refreshSource.Token()
 	if err != nil {
 		// Ignore errors during refresh, but return nil which will trigger the full login flow.
-		return nil, nil
+		return nil, err
 	}
 
 	// The spec is not 100% clear about whether an ID token from the refresh flow should include a nonce, and at least
@@ -115,6 +115,16 @@ func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return err
 	}
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	c, err := client.New(cfg, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return err
+	}
 	v := session.Values[sessionKey]
 	if v == nil {
 		session.Options.MaxAge = -1
@@ -124,14 +134,19 @@ func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request)
 	tokenStr := v.(string)
 	token := &oidctypes.Token{}
 	err = yaml.Unmarshal([]byte(tokenStr), token)
-	if err == nil {
+	if err != nil {
 		session.Options.MaxAge = -1
 		session.Save(r, w)
-		return httperr.Newf(http.StatusBadRequest, "login required: %s", err)
+		return httperr.Newf(http.StatusBadRequest, "login required %s", err)
 	}
+	cli, err := h.updateHTTPClientCert(h.Ctx, c)
+	if err != nil {
+		return err
+	}
+	h.HTTPClient = cli
 	if token.RefreshToken != nil && token.RefreshToken.Token != "" {
 		token, err = h.handleRefresh(h.Ctx, token.RefreshToken)
-		if err == nil {
+		if err != nil {
 			session.Options.MaxAge = -1
 			session.Save(r, w)
 			return httperr.Newf(http.StatusInternalServerError, "failed refresh: %s", err)
@@ -146,7 +161,7 @@ func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request)
 			return err
 		}
 	}
-	// Perform the RFC8693 token exchange.
+	//// Perform the RFC8693 token exchange.
 	exchangedToken, err := h.tokenExchangeRFC8693(token)
 	if err != nil {
 		return err
@@ -154,16 +169,7 @@ func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request)
 	q := r.URL.Query()
 	name := q.Get("name")
 	namspace := q.Get("namespace")
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
-	c, err := client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
-	})
-	if err != nil {
-		return err
-	}
+
 	if name == "" || namspace == "" {
 		return httperr.New(http.StatusBadRequest, "query params name and namespace are required")
 	}
@@ -177,7 +183,6 @@ func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return err
 	}
-	// TODO: perform concierge exchange for all workload cluster
 	concierge, err := conciergeclient.New(
 		conciergeclient.WithEndpoint(conciergeInfo.Endpoint),
 		conciergeclient.WithBase64CABundle(conciergeInfo.CABundle),
@@ -266,6 +271,25 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	return nil
 }
 
+func (h *HandlerState) updateHTTPClientCert(ctx context.Context, c client.Client) (*http.Client, error) {
+	const caSecretName = "ca-secret"
+	const caName = "ca.crt"
+	byt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(byt)
+
+	tlsConfig := &tls.Config{
+		RootCAs: certPool,
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	cli := &http.Client{Transport: transport}
+	h.Ctx = context.WithValue(ctx, oauth2.HTTPClient, h.HTTPClient)
+	return cli, nil
+}
+
 func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 	fedo := make(map[string]interface{})
 	c, err := client.New(h.RestConf, client.Options{
@@ -287,22 +311,12 @@ func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 		return err
 	}
 	if isLocal {
-		const caSecretName = "ca-secret"
-		const caName = "ca.crt"
-		byt, err := util.GetCaFromSecret(ctx, c, caSecretName, caName, undistro.Namespace)
+		cli, err = h.updateHTTPClientCert(ctx, c)
 		if err != nil {
 			return err
 		}
-		certPool := x509.NewCertPool()
-		certPool.AppendCertsFromPEM(byt)
-
-		tlsConfig := &tls.Config{
-			RootCAs: certPool,
-		}
-		transport := &http.Transport{TLSClientConfig: tlsConfig}
-		cli = &http.Client{Transport: transport}
-		h.Ctx = context.WithValue(ctx, oauth2.HTTPClient, h.HTTPClient)
 	}
+	h.HTTPClient = cli
 	h.Logger = ctrl.Log
 	h.Issuer = issuer
 	h.ClientID = "undistro-ui"
@@ -313,7 +327,6 @@ func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 		"email",
 		"pinniped:request-audience",
 	}
-	h.HTTPClient = cli
 	h.generateNonce = nonce.Generate
 	h.generateState = state.Generate
 	h.generatePKCE = pkce.Generate
@@ -323,7 +336,7 @@ func (h *HandlerState) updateHandlerState(ctx context.Context) error {
 	}
 	// Todo support LDAP
 	h.upstreamIdentityProviderType = "oidc"
-	h.RequestedAudience = rand.String(24)
+	h.RequestedAudience = "undistro-request-audienc"
 	return nil
 }
 

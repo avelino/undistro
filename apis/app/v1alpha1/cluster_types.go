@@ -192,7 +192,7 @@ type ClusterStatus struct {
 	KubernetesVersion   string             `json:"kubernetesVersion,omitempty"`
 	ControlPlane        ControlPlaneNode   `json:"controlPlane,omitempty"`
 	Workers             []WorkerNode       `json:"workers,omitempty"`
-	ConciergeInfo       *ConciergeInfo      `json:"conciergeInfo,omitempty"`
+	ConciergeInfo       *ConciergeInfo     `json:"conciergeInfo,omitempty"`
 }
 
 // +genclient

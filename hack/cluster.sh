@@ -103,11 +103,13 @@ function print_registry_host {
 ## KinD only.
 function create_kind_cluster_and_enable_registry {
 KIND_API_PORT=${KIND_API_PORT:-6443}
+KIND_API_SERVER_ADDR=${KIND_API_SERVER_ADDR:-0.0.0.0}
 cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   apiServerPort: ${KIND_API_PORT}
+  apiServerAddress: ${KIND_API_SERVER_ADDR}
 nodes:
 - role: control-plane
   kubeadmConfigPatches:

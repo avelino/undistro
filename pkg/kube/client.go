@@ -19,10 +19,15 @@ package kube
 import (
 	"context"
 	"fmt"
+
+	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
+	pinnipedcmd "github.com/getupio-undistro/undistro/third_party/pinniped/pinniped/cmd"
 	"github.com/pkg/errors"
+	configv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/config/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -30,22 +35,18 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	pinnipedcmd "github.com/getupio-undistro/undistro/third_party/pinniped/pinniped/cmd"
-	configv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/config/v1alpha1"
-	appv1alpha1 "github.com/getupio-undistro/undistro/apis/app/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
- var ErrConciergeNotInstalled = errors.New("concierge not installed")
+var ErrConciergeNotInstalled = errors.New("concierge not installed")
 
- func IgnoreConciergeNotInstalled(err error) error {
-	 if err != ErrConciergeNotInstalled {
-		 return err
-	 }
-	 return nil
- }
+func IgnoreConciergeNotInstalled(err error) error {
+	if err != ErrConciergeNotInstalled {
+		return err
+	}
+	return nil
+}
 
-func ConciergeInfoFromConfig(ctx context.Context, cfg *rest.Config) (*appv1alpha1.ConciergeInfo, error){
+func ConciergeInfoFromConfig(ctx context.Context, cfg *rest.Config) (*appv1alpha1.ConciergeInfo, error) {
 	pinnipedClient, err := pinnipedcmd.GetRealConciergeClientsetFromConfig(cfg, "pinniped.dev")
 	if err != nil {
 		return nil, ErrConciergeNotInstalled

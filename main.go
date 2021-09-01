@@ -32,13 +32,13 @@ import (
 	"github.com/getupio-undistro/undistro/pkg/record"
 	"github.com/getupio-undistro/undistro/pkg/scheme"
 	"github.com/getupio-undistro/undistro/pkg/undistro/apiserver"
-	"github.com/getupio-undistro/undistro/pkg/util"
 	"github.com/getupio-undistro/undistro/pkg/version"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	setupLog = ctrl.Log.WithName("setup")
+	setupLog        = ctrl.Log.WithName("setup")
+	requestAudience = "undistro-request-audienc"
 )
 
 func main() {
@@ -112,7 +112,7 @@ func main() {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("Identity"),
 		Scheme:   mgr.GetScheme(),
-		Audience: util.RandomString(24),
+		Audience: requestAudience,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Identity")
 		os.Exit(1)
