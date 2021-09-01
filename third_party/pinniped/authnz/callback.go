@@ -22,6 +22,8 @@ import (
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/oidc/provider"
 	"github.com/getupio-undistro/undistro/third_party/pinniped/internal/upstreamoidc"
 	"github.com/go-logr/logr"
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 	"github.com/ory/fosite"
 	"go.pinniped.dev/pkg/conciergeclient"
 	"go.pinniped.dev/pkg/oidcclient/nonce"
@@ -34,10 +36,12 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	debugLogLevel = 4
+	sessionKey    = "oidctoken"
 )
 
 type HandlerState struct {
@@ -68,12 +72,117 @@ type HandlerState struct {
 	OAuth2Config *oauth2.Config
 	UseFormPost  bool
 	RestConf     *rest.Config
+	SessionStore sessions.Store
 }
 
 func SetRestConfHandlerState(r *rest.Config) *HandlerState {
 	return &HandlerState{
-		RestConf: r,
+		RestConf:     r,
+		SessionStore: sessions.NewCookieStore(securecookie.GenerateRandomKey(32)),
 	}
+}
+
+func (h *HandlerState) handleRefresh(ctx context.Context, refreshToken *oidctypes.RefreshToken) (*oidctypes.Token, error) {
+	refreshSource := h.OAuth2Config.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken.Token})
+
+	refreshed, err := refreshSource.Token()
+	if err != nil {
+		// Ignore errors during refresh, but return nil which will trigger the full login flow.
+		return nil, nil
+	}
+
+	// The spec is not 100% clear about whether an ID token from the refresh flow should include a nonce, and at least
+	// some providers do not include one, so we skip the nonce validation here (but not other validations).
+	return h.getProvider(h.OAuth2Config, h.provider, h.HTTPClient).ValidateToken(ctx, refreshed, "")
+}
+
+func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request) error {
+	h.Ctx = r.Context()
+	// Perform OIDC discovery.
+	if err := h.initOIDCDiscovery(); err != nil {
+		return err
+	}
+	session, err := h.SessionStore.Get(r, "undistro-login")
+	if err != nil {
+		return err
+	}
+	v := session.Values[sessionKey]
+	if v == nil {
+		session.Options.MaxAge = -1
+		session.Save(r, w)
+		return httperr.New(http.StatusBadRequest, "login required")
+	}
+	tokenStr := v.(string)
+	token := &oidctypes.Token{}
+	err = yaml.Unmarshal([]byte(tokenStr), token)
+	if err == nil {
+		session.Options.MaxAge = -1
+		session.Save(r, w)
+		return httperr.Newf(http.StatusBadRequest, "login required: %s", err)
+	}
+	if token.RefreshToken != nil && token.RefreshToken.Token != "" {
+		token, err = h.handleRefresh(h.Ctx, token.RefreshToken)
+		if err == nil {
+			session.Options.MaxAge = -1
+			session.Save(r, w)
+			return httperr.Newf(http.StatusInternalServerError, "failed refresh: %s", err)
+		}
+		tokenyaml, err := yaml.Marshal(*token)
+		if err != nil {
+			return err
+		}
+		session.Values[sessionKey] = string(tokenyaml)
+		err = session.Save(r, w)
+		if err != nil {
+			return err
+		}
+	}
+	// Perform the RFC8693 token exchange.
+	exchangedToken, err := h.tokenExchangeRFC8693(token)
+	if err != nil {
+		return err
+	}
+	q := r.URL.Query()
+	name := q.Get("name")
+	namspace := q.Get("namespace")
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	c, err := client.New(cfg, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return err
+	}
+	if name == "" || namspace == "" {
+		return httperr.New(http.StatusBadRequest, "query params name and namespace are required")
+	}
+	if name != "management" && namspace != "undistro-system" {
+		cfg, err = kube.NewClusterConfig(h.Ctx, c, name, namspace)
+		if err != nil {
+			return err
+		}
+	}
+	conciergeInfo, err := kube.ConciergeInfoFromConfig(h.Ctx, cfg)
+	if err != nil {
+		return err
+	}
+	// TODO: perform concierge exchange for all workload cluster
+	concierge, err := conciergeclient.New(
+		conciergeclient.WithEndpoint(conciergeInfo.Endpoint),
+		conciergeclient.WithBase64CABundle(conciergeInfo.CABundle),
+		conciergeclient.WithAuthenticator("jwt", "supervisor-jwt-authenticator"),
+		conciergeclient.WithAPIGroupSuffix("pinniped.dev"),
+	)
+	if err != nil {
+		return err
+	}
+	cred, err := concierge.ExchangeToken(h.Ctx, exchangedToken.IDToken.Token)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(cred)
 }
 
 func (h *HandlerState) HandleAuthCodeCallback(w http.ResponseWriter, r *http.Request) error {
@@ -86,6 +195,10 @@ func (h *HandlerState) HandleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 }
 
 func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Request) (err error) {
+	session, err := h.SessionStore.Get(r, "undistro-login")
+	if err != nil {
+		return err
+	}
 	var params url.Values
 	if h.UseFormPost {
 		// Return HTTP 405 for anything that's not a POST.
@@ -131,43 +244,16 @@ func (h *HandlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return httperr.Wrap(http.StatusBadRequest, "could not complete code exchange", err)
 	}
-
-	// Perform the RFC8693 token exchange.
-	exchangedToken, err := h.tokenExchangeRFC8693(token)
+	tokenyaml, err := yaml.Marshal(*token)
 	if err != nil {
 		return err
 	}
-	// get management cluster config
-	cfg, err := rest.InClusterConfig()
+	session.Values[sessionKey] = string(tokenyaml)
+	err = session.Save(r, w)
 	if err != nil {
 		return err
 	}
-	conciergeInfo, err := kube.ConciergeInfoFromConfig(h.Ctx, cfg)
-	if err != nil {
-		return err
-	}
-	// TODO: perform concierge exchange for all workload cluster
-	concierge, err := conciergeclient.New(
-		conciergeclient.WithEndpoint(conciergeInfo.Endpoint),
-		conciergeclient.WithBase64CABundle(conciergeInfo.CABundle),
-		conciergeclient.WithAuthenticator("jwt", "supervisor-jwt-authenticator"),
-		conciergeclient.WithAPIGroupSuffix("pinniped.dev"),
-	)
-	if err != nil {
-		return err
-	}
-	cred, err := concierge.ExchangeToken(h.Ctx, exchangedToken.IDToken.Token)
-	if err != nil {
-		return err
-	}
-	response, err := json.Marshal(cred)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(response)
-	if err != nil {
-		return err
-	}
+	fmt.Fprintln(w, "login completed you can close this window")
 	return nil
 }
 
