@@ -41,7 +41,6 @@ import (
 )
 
 func init() {
-	klog.InitFlags(nil)
 	logger := klogr.New()
 	// additionally force all of the controllers to use the Ginkgo logger.
 	ctrl.SetLogger(logger)
