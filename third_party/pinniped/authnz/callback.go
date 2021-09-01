@@ -96,6 +96,15 @@ func (h *HandlerState) handleRefresh(ctx context.Context, refreshToken *oidctype
 	return h.getProvider(h.OAuth2Config, h.provider, h.HTTPClient).ValidateToken(ctx, refreshed, "")
 }
 
+func (h *HandlerState) HandleLogout(w http.ResponseWriter, r *http.Request) error {
+	session, err := h.SessionStore.Get(r, "undistro-login")
+	if err != nil {
+		return err
+	}
+	session.Options.MaxAge = -1
+	return session.Save(r, w)
+}
+
 func (h *HandlerState) HandleAuthCluster(w http.ResponseWriter, r *http.Request) error {
 	h.Ctx = r.Context()
 	// Perform OIDC discovery.
